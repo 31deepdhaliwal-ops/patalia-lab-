@@ -464,182 +464,141 @@ const callGemini = async (_key, dataUrl) => {
   return { values, raw: text };
 };
 
-// ====== PDF ======
+// ====== PDF — content only, no header/footer (pre-printed letterhead) ======
 const generatePDF = (report, lab) => {
   const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const W = 210, H = 297, M = 14;
-  const RED = [155, 25, 30], BLUE = [29, 78, 216], DARK = [25, 25, 25], GREY = [110, 110, 110];
+  const W = 210, H = 297;
+  const ML = 16, MR = 16;           // left / right margin
+  const MT = 48;                     // top blank space for pre-printed header
+  const MB = 32;                     // bottom blank space for pre-printed footer
+  const RED = [155, 25, 30], BLUE = [29, 78, 216], DARK = [20, 20, 20], GREY = [100, 100, 100];
   const dateStr = new Date(report.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
-  let y = M + 2;
+  let y = MT;
 
-  // ===== HEADER =====
-  const nameX = lab.logoDataUrl ? M + 22 : M;
-  if (lab.logoDataUrl) { try { doc.addImage(lab.logoDataUrl, "PNG", M, y, 18, 18); } catch {} }
-  doc.setFont("times", "bold"); doc.setFontSize(20); doc.setTextColor(...RED);
-  doc.text(lab.name || "LAB NAME", nameX, y + 7);
-  doc.setFont("times", "italic"); doc.setFontSize(9); doc.setTextColor(...GREY);
-  if (lab.address) doc.text(lab.address, nameX, y + 13);
+  // ── PATIENT INFO ──────────────────────────────────────────────────
+  // thin top rule
+  doc.setDrawColor(...DARK); doc.setLineWidth(0.5); doc.line(ML, y, W - MR, y);
+  y += 6;
 
-  doc.setFillColor(...RED);
-  doc.rect(W - M - 60, y, 60, 7, "F");
-  doc.setTextColor(255, 255, 255); doc.setFont("times", "bold"); doc.setFontSize(9.5);
-  doc.text(lab.tagline || "FULLY COMPUTERISED LAB", W - M - 30, y + 4.8, { align: "center" });
-  doc.setTextColor(...RED); doc.setFontSize(11);
-  doc.text(lab.phone || "", W - M, y + 13, { align: "right" });
-
-  y += 22;
-  doc.setDrawColor(...DARK); doc.setLineWidth(0.5); doc.line(M, y, W - M, y);
-  y += 1; doc.setLineWidth(0.2); doc.line(M, y, W - M, y);
-  y += 5;
-
-  // ===== PATIENT INFO BOX =====
-  const boxY = y;
-  doc.setFillColor(249, 247, 243); doc.setDrawColor(210, 205, 195); doc.setLineWidth(0.3);
-  doc.rect(M, boxY, W - 2 * M, 25, "FD");
-
-  const L1 = M + 4, V1 = M + 30, L2 = W / 2 + 4, V2 = W / 2 + 22;
-  y += 5;
-
-  const pRow = (label1, val1, label2, val2) => {
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
-    doc.text(label1, L1, y); doc.text(label2, L2, y);
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...DARK);
-    doc.text(val1, V1, y); doc.text(val2, V2, y);
-    y += 6;
+  // Two-column patient fields
+  const LC = ML, VC = ML + 34, RC = W / 2 + 4, RV = W / 2 + 34;
+  const field = (lbl, val, lx, vx) => {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
+    doc.text(lbl, lx, y);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...DARK);
+    doc.text(String(val || "—"), vx, y);
   };
-  pRow("Patient Name", report.patient.name || "—", "Sex", { M: "Male", F: "Female", O: "Other" }[report.patient.gender] || "—");
-  pRow("Referred by Dr.", report.patient.refBy || "—", "Age", report.patient.age ? `${report.patient.age} Years` : "—");
-  pRow("Lab Ref. No.", report.id, "Date", dateStr);
 
-  y = boxY + 31;
-
-  // ===== TITLE =====
-  doc.setFont("times", "bold"); doc.setFontSize(14); doc.setTextColor(...DARK);
-  doc.text("HAEMATOLOGICAL REPORT", W / 2, y, { align: "center" });
-  const tw = doc.getTextWidth("HAEMATOLOGICAL REPORT");
-  doc.setDrawColor(...RED); doc.setLineWidth(0.4);
-  doc.line(W / 2 - tw / 2, y + 1.5, W / 2 + tw / 2, y + 1.5);
+  field("Patient Name", report.patient.name, LC, VC);
+  field("Sex", { M: "Male", F: "Female", O: "Other" }[report.patient.gender] || "—", RC, RV);
+  y += 7;
+  field("Referred by Dr.", report.patient.refBy || "—", LC, VC);
+  field("Age", report.patient.age ? `${report.patient.age} Years` : "—", RC, RV);
+  y += 7;
+  field("Lab Ref. No.", report.id, LC, VC);
+  field("Date", dateStr, RC, RV);
   y += 8;
 
-  // ===== TABLE HEADER ROW =====
-  const colInv = M + 2;   // investigation (left)
-  const colResult = 99;   // result (right-aligned)
-  const colFlag = 107;    // triangle flag (centred)
-  const colRange = 117;   // normal range (left)
-  const colUnit = W - M;  // unit (right-aligned)
-  const ROW_H = 6.2;
+  doc.setDrawColor(...DARK); doc.setLineWidth(0.5); doc.line(ML, y, W - MR, y);
+  y += 7;
 
+  // ── REPORT TITLE ─────────────────────────────────────────────────
+  doc.setFont("times", "bold"); doc.setFontSize(15); doc.setTextColor(...DARK);
+  doc.text("HAEMATOLOGICAL REPORT", W / 2, y, { align: "center" });
+  y += 7;
+
+  // ── TABLE ─────────────────────────────────────────────────────────
+  const cInv    = ML + 1;   // investigation name (left)
+  const cResult = 98;       // result (right-aligned)
+  const cFlag   = 107;      // ▲▼ (centred)
+  const cRange  = 115;      // normal range (left)
+  const cUnit   = W - MR;   // unit (right-aligned)
+  const ROW_H   = 7.2;
+  const HDR_H   = 8;
+
+  // Header row
   doc.setFillColor(...RED);
-  doc.rect(M, y - 4.5, W - 2 * M, 7, "F");
-  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
-  doc.text("INVESTIGATION", colInv, y);
-  doc.text("RESULT", colResult, y, { align: "right" });
-  doc.text("FLAG", colFlag, y, { align: "center" });
-  doc.text("NORMAL RANGE", colRange, y);
-  doc.text("UNIT", colUnit, y, { align: "right" });
-  y += 3.5;
+  doc.rect(ML, y - 5.5, W - ML - MR, HDR_H, "F");
+  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
+  doc.text("INVESTIGATION",  cInv,    y);
+  doc.text("RESULT",         cResult, y, { align: "right" });
+  doc.text("FLAG",           cFlag,   y, { align: "center" });
+  doc.text("NORMAL RANGE",   cRange,  y);
+  doc.text("UNIT",           cUnit,   y, { align: "right" });
+  y += HDR_H - 4.5;
 
-  // ===== TABLE BODY =====
-  const fmtNum = (n, display) => {
-    if (display === "integer") return String(Math.round(n));
-    if (display === "decimal3") return n.toFixed(3);
-    if (display === "decimal2") return n.toFixed(2);
-    return n.toFixed(1);
-  };
+  const fmtNum = (n, d) => d === "integer" ? String(Math.round(n)) : d === "decimal3" ? n.toFixed(3) : d === "decimal2" ? n.toFixed(2) : n.toFixed(1);
 
   for (const p of PARAMS) {
-    doc.setDrawColor(215, 210, 200); doc.setLineWidth(0.2);
-    doc.line(M, y - ROW_H + 2, W - M, y - ROW_H + 2);
+    // row separator
+    doc.setDrawColor(210, 205, 200); doc.setLineWidth(0.2);
+    doc.line(ML, y - ROW_H + 2.5, W - MR, y - ROW_H + 2.5);
 
     if (p.section) {
-      y += 1.5;
-      doc.setFillColor(238, 233, 222); doc.setDrawColor(215, 210, 200); doc.setLineWidth(0.2);
-      doc.rect(M, y - 4, W - 2 * M, 6.5, "FD");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...DARK);
-      doc.text(p.label.toUpperCase(), colInv, y);
+      y += 2;
+      doc.setFillColor(235, 230, 222);
+      doc.rect(ML, y - 5, W - ML - MR, 7.5, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...DARK);
+      doc.text("DIFFERENTIAL LEUCOCYTE COUNT (DLC)", cInv, y);
       y += 5;
       continue;
     }
 
-    const v = report.values[p.key];
+    const v    = report.values[p.key];
     const flag = flagOf(p.key, v, report.patient.age, report.patient.gender);
-    const isH = flag === "H", isL = flag === "L";
+    const isH  = flag === "H", isL = flag === "L";
 
-    // Investigation name
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...DARK);
-    doc.text(p.label, p.indent ? colInv + 5 : colInv, y);
+    // name
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(...DARK);
+    doc.text(p.label, p.indent ? cInv + 6 : cInv, y);
 
-    // Result value — bold, coloured if abnormal
-    doc.setFont("helvetica", "bold"); doc.setTextColor(...(isH ? RED : isL ? BLUE : DARK));
-    doc.text(formatValue(v, p.display), colResult, y, { align: "right" });
+    // result
+    doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+    doc.setTextColor(...(isH ? RED : isL ? BLUE : DARK));
+    doc.text(formatValue(v, p.display), cResult, y, { align: "right" });
 
-    // Flag: filled triangle drawn with jsPDF shapes
-    if (isH) {
-      doc.setFillColor(...RED);
-      doc.triangle(colFlag, y - 3.5, colFlag - 2.2, y + 0.5, colFlag + 2.2, y + 0.5, "F");
-    } else if (isL) {
-      doc.setFillColor(...BLUE);
-      doc.triangle(colFlag, y + 0.5, colFlag - 2.2, y - 3.5, colFlag + 2.2, y - 3.5, "F");
-    }
+    // flag triangle
+    if (isH) { doc.setFillColor(...RED);  doc.triangle(cFlag, y - 4, cFlag - 2.5, y + 0.8, cFlag + 2.5, y + 0.8, "F"); }
+    if (isL) { doc.setFillColor(...BLUE); doc.triangle(cFlag, y + 0.8, cFlag - 2.5, y - 4, cFlag + 2.5, y - 4, "F"); }
 
-    // Normal range — patient-specific (age + gender matched)
+    // range
     const ageRow = p.ranges.find(r => +report.patient.age >= r.ageMin && +report.patient.age < r.ageMax) || p.ranges[p.ranges.length - 1];
     if (ageRow) {
       const { M: mR, F: fR } = ageRow;
-      const gender = report.patient.gender;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-      if (gender === "M" || gender === "F") {
-        const [rMin, rMax] = gender === "M" ? mR : fR;
-        doc.text(`${fmtNum(rMin, p.display)} - ${fmtNum(rMax, p.display)}`, colRange, y);
+      const g = report.patient.gender;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...GREY);
+      if (g === "M" || g === "F") {
+        const [mn, mx] = g === "M" ? mR : fR;
+        doc.text(`${fmtNum(mn, p.display)} - ${fmtNum(mx, p.display)}`, cRange, y);
       } else if (mR[0] === fR[0] && mR[1] === fR[1]) {
-        doc.text(`${fmtNum(mR[0], p.display)} - ${fmtNum(mR[1], p.display)}`, colRange, y);
+        doc.text(`${fmtNum(mR[0], p.display)} - ${fmtNum(mR[1], p.display)}`, cRange, y);
       } else {
-        doc.setFontSize(7.5);
-        doc.text(`M:${fmtNum(mR[0],p.display)}-${fmtNum(mR[1],p.display)}  F:${fmtNum(fR[0],p.display)}-${fmtNum(fR[1],p.display)}`, colRange, y);
+        doc.setFontSize(8);
+        doc.text(`M: ${fmtNum(mR[0],p.display)}-${fmtNum(mR[1],p.display)}   F: ${fmtNum(fR[0],p.display)}-${fmtNum(fR[1],p.display)}`, cRange, y);
       }
     }
 
-    // Unit
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(130, 130, 130);
-    doc.text(p.unit, colUnit, y, { align: "right" });
+    // unit
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(130, 130, 130);
+    doc.text(p.unit, cUnit, y, { align: "right" });
 
     doc.setTextColor(...DARK);
     y += ROW_H;
   }
 
-  // Bottom rule
-  doc.setDrawColor(215, 210, 200); doc.setLineWidth(0.3);
-  doc.line(M, y - ROW_H + 2, W - M, y - ROW_H + 2);
-  y += 6;
+  // closing rule
+  doc.setDrawColor(210, 205, 200); doc.setLineWidth(0.3);
+  doc.line(ML, y - ROW_H + 2.5, W - MR, y - ROW_H + 2.5);
+  y += 8;
 
-  // ===== END OF REPORT + SIGNATURE =====
-  doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(...GREY);
-  doc.text("- - -  End of Report  - - -", W / 2, y, { align: "center" });
-  y += 12;
-
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...DARK);
-  doc.text(lab.signatoryName || "Authorised Signatory", W - M, y, { align: "right" });
+  // ── SIGNATURE ────────────────────────────────────────────────────
+  doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.setTextColor(...DARK);
+  doc.text(lab.signatoryName || "Authorised Signatory", W - MR, y, { align: "right" });
   if (lab.signatoryQual) {
-    y += 4.5;
-    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-    doc.text(lab.signatoryQual, W - M, y, { align: "right" });
+    y += 5;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9); doc.setTextColor(...GREY);
+    doc.text(lab.signatoryQual, W - MR, y, { align: "right" });
   }
-
-  // ===== FOOTER =====
-  const footerY = H - 20;
-  doc.setDrawColor(180); doc.setLineWidth(0.3); doc.line(M, footerY - 2, W - M, footerY - 2);
-  doc.setFont("helvetica", "italic"); doc.setFontSize(6.5); doc.setTextColor(130);
-  const disclaimer = "Results declared may vary on account of chemical/kits and may contain human error. Please correlate clinically. Patient identity not verified. Analytical reports are to be used by medical practitioners & pathologists only and are not diagnostic results/opinion.";
-  doc.text(doc.splitTextToSize(disclaimer, W - 2 * M - 52), M, footerY);
-  if (lab.equipment) {
-    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(130);
-    doc.text(lab.equipment, W - M, footerY, { align: "right" });
-  }
-
-  doc.setFillColor(...RED); doc.rect(0, H - 7, W, 7, "F");
-  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
-  doc.text(lab.jurisdiction || "", M + 2, H - 2.5);
-  doc.text("NOT VALID FOR MEDICO-LEGAL PURPOSE", W - M, H - 2.5, { align: "right" });
 
   return doc;
 };
