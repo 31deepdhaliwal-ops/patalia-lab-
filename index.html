@@ -514,18 +514,18 @@ const generatePDF = (report, lab) => {
   const cRange  = 122;      // normal range (left)
   const cUnit   = W - MR;   // unit (right-aligned)
   const ROW_H   = 7.2;
-  const HDR_H   = 8;
+  const HDR_H   = 10;
 
   // Header row
   doc.setFillColor(...RED);
-  doc.rect(ML, y - 5.5, W - ML - MR, HDR_H, "F");
+  doc.rect(ML, y - 6.5, W - ML - MR, HDR_H, "F");
   doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9.5);
   doc.text("INVESTIGATION",  cInv,    y);
   doc.text("RESULT",         cResult, y, { align: "right" });
   doc.text("FLAG",           cFlag,   y, { align: "center" });
   doc.text("NORMAL RANGE",   cRange,  y);
   doc.text("UNIT",           cUnit,   y, { align: "right" });
-  y += ROW_H + 1;
+  y += ROW_H + 2;
 
   const fmtNum = (n, d) => d === "integer" ? String(Math.round(n)) : d === "decimal3" ? n.toFixed(3) : d === "decimal2" ? n.toFixed(2) : n.toFixed(1);
 
