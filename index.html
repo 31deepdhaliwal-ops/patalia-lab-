@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#f8f5ef" />
+<title>CBC Lab</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><circle cx='8' cy='8' r='3' fill='%237a1818'/></svg>" />
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Geist:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f9f8f6; --bg-2: #eeebe3;
+    --ink: #18181b; --ink-2: #27272a;
+    --muted: #71717a; --line: #18181b; --hairline: #e4e4e7;
+    --accent: #9f1239; --accent-soft: #fff1f2;
+    --abnormal-low: #1d4ed8;
+    --good: #15803d; --paper: #fefce8;
+  }
+  * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font-family: 'Geist', system-ui, sans-serif; font-feature-settings: "ss01", "cv11"; }
+  .display { font-family: 'Fraunces', Georgia, serif; letter-spacing: -0.02em; }
+  .mono { font-family: 'JetBrains Mono', 'Menlo', monospace; font-feature-settings: "tnum", "ss02"; font-variant-numeric: tabular-nums; }
+  .smallcaps { font-variant-caps: all-small-caps; letter-spacing: 0.1em; font-weight: 600; }
+  .hairline { height: 1px; background: var(--hairline); }
+  .hairline-strong { height: 1px; background: var(--line); }
+
+  .field-input {
+    background: transparent; border: 0; border-bottom: 2px solid var(--hairline);
+    padding: 0.625rem 0; color: var(--ink); width: 100%; outline: none;
+    transition: border-color 150ms ease; font-size: 1rem; min-height: 46px;
+  }
+  .field-input:focus { border-bottom-color: var(--accent); }
+
+  .btn-primary {
+    background: var(--accent); color: #fff; padding: 0.75rem 1.5rem;
+    font-weight: 600; font-size: 0.875rem; letter-spacing: 0.02em;
+    transition: opacity 150ms; min-height: 46px;
+    display: inline-flex; align-items: center;
+  }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-primary:active { opacity: 0.7; }
+  .btn-primary:disabled { background: var(--hairline); color: var(--muted); cursor: not-allowed; opacity: 1; }
+
+  .btn-ghost {
+    background: transparent; color: var(--ink); border: 1.5px solid var(--hairline);
+    padding: 0.625rem 1rem; font-weight: 500; font-size: 0.8125rem;
+    transition: border-color 150ms, background 150ms; min-height: 46px;
+    display: inline-flex; align-items: center;
+  }
+  .btn-ghost:hover { border-color: var(--ink); background: var(--bg-2); }
+
+  .tab-link {
+    padding: 0.625rem 1rem; font-size: 0.875rem; color: var(--muted);
+    border-bottom: 2px solid transparent; transition: color 150ms, border-color 150ms;
+    font-weight: 500; white-space: nowrap;
+  }
+  .tab-link:hover { color: var(--ink); }
+  .tab-link.active { color: var(--ink); border-bottom-color: var(--accent); }
+
+  .result-row {
+    display: grid;
+    grid-template-columns: 1fr 96px 108px 28px;
+    align-items: center; gap: 0.75rem;
+    padding: 0.5rem 0; border-bottom: 1px solid var(--hairline);
+  }
+  .result-row.indent { padding-left: 1.25rem; }
+  .result-row.section-header { padding: 1rem 0 0.375rem 0; border-bottom: 2px solid var(--ink); }
+  @media (max-width: 639px) {
+    .result-row { grid-template-columns: 1fr 88px 26px; gap: 0.5rem; }
+    .result-range { display: none; }
+  }
+
+  .result-input {
+    background: transparent; border: 1px solid transparent; outline: none;
+    text-align: right; width: 100%; font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums; font-size: 1rem; color: var(--ink);
+    padding: 0.375rem 0.5rem; transition: all 150ms; min-height: 40px;
+  }
+  .result-input:focus { border-color: var(--accent); background: var(--bg-2); }
+
+  .flag-h { color: var(--accent); font-weight: 700; }
+  .flag-l { color: var(--abnormal-low); font-weight: 700; }
+  .report-num { font-family: 'Fraunces', serif; font-style: italic; font-weight: 400; color: var(--muted); }
+
+  @keyframes fade-rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .reveal { animation: fade-rise 240ms ease-out both; }
+  .scrim { background: rgba(24,24,27,0.6); backdrop-filter: blur(4px); }
+
+  input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  input[type=number] { -moz-appearance: textfield; }
+  .focus-ring:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .badge-flagged {
+    font-size: 0.6875rem; padding: 0.2rem 0.5rem;
+    background: var(--accent-soft); color: var(--accent);
+    border: 1px solid var(--accent); font-weight: 700;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  .mobile-save-bar {
+    display: none;
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+    padding: 0.875rem 1.25rem;
+    background: var(--bg); border-top: 1px solid var(--hairline);
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.10);
+  }
+  @media (max-width: 1023px) {
+    .mobile-save-bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .desktop-save { display: none !important; }
+    body { padding-bottom: 80px; }
+  }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--hairline); border-radius: 99px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="importmap">
+{
+  "imports": {
+    "react": "https://esm.sh/react@18.3.1",
+    "react-dom/client": "https://esm.sh/react-dom@18.3.1/client",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.4"
+  }
+}
+</script>
+
+<script type="module">
+import React, { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { createRoot } from "react-dom/client";
+import { createClient } from "@supabase/supabase-js";
+
+const h = React.createElement;
+const { jsPDF } = window.jspdf;
+
+// Supabase (anon/public key — safe to commit)
+const SUPA_URL      = "https://svejzwksieohizvjpqku.supabase.co";
+const SUPA_ANON_KEY = "sb_publishable_O0MI0ax2ihpWf9gzsaeGQA_zlgn35yQ";
+// Gemini key lives in Vercel env → api/scan.js (never in this file)
+
+const DEFAULT_LAB = {
+  name: "PATIALA COMPUTERISED LABORATORY",
+  short: "PCL",
+  branch: "Joga",
+  address: "Opp. Civil Hospital, JOGA (Distt. Mansa)",
+  phone: "M. 94176-46528",
+  email: "",
+  whatsappCountryCode: "91",
+  logoDataUrl: "",
+  signatoryName: "Authorised Signatory",
+  signatoryQual: "",
+  tagline: "FULLY COMPUTERISED LAB",
+  equipment: "Ebra Chem 5X Biochemistry Analyzer · Sysmex XP-100 3-Part Diff Hematology Analyzer",
+  jurisdiction: "SUBJECT TO MANSA JURISDICTION",
+};
+
+// ====== 22 PARAMETERS matching the real slip ======
+// Each parameter has: key, label, unit, ranges (gender/age aware), section
+// Ranges format: array of { ageMin, ageMax, M:[min,max], F:[min,max] }
+// Some are flat (no gender/age variation) — same min/max for both.
+
+const PARAMS = [
+  { key: "HGB", label: "Haemoglobin", unit: "gm/dl", display: "decimal",
+    ranges: [
+      { ageMin: 0, ageMax: 0.5, M: [10.0, 18.0], F: [10.0, 18.0] },
+      { ageMin: 0.5, ageMax: 12, M: [11.5, 14.5], F: [11.5, 14.5] },
+      { ageMin: 12, ageMax: 200, M: [12.5, 16.5], F: [11.5, 15.5] }
+    ] },
+  { key: "TLC", label: "TLC (WBC)", unit: "/cmm", display: "integer",
+    ranges: [
+      { ageMin: 0, ageMax: 1, M: [9000, 30000], F: [9000, 30000] },
+      { ageMin: 1, ageMax: 5, M: [6000, 17000], F: [6000, 17000] },
+      { ageMin: 5, ageMax: 12, M: [4500, 13500], F: [4500, 13500] },
+      { ageMin: 12, ageMax: 200, M: [4000, 11000], F: [4000, 11000] }
+    ] },
+  // DLC sub-section
+  { key: "DLC_HEADER", label: "DLC", section: true },
+  { key: "NEUT", label: "Neutrophils", unit: "%", display: "integer", indent: true,
+    ranges: [{ ageMin: 0, ageMax: 200, M: [40, 75], F: [40, 75] }] },
+  { key: "LYMPH", label: "Lymphocytes", unit: "%", display: "integer", indent: true,
+    ranges: [{ ageMin: 0, ageMax: 200, M: [20, 45], F: [20, 45] }] },
+  { key: "MONO", label: "Monocytes", unit: "%", display: "integer", indent: true,
+    ranges: [{ ageMin: 0, ageMax: 200, M: [2, 10], F: [2, 10] }] },
+  { key: "EOS", label: "Eosinophils", unit: "%", display: "integer", indent: true,
+    ranges: [{ ageMin: 0, ageMax: 200, M: [1, 6], F: [1, 6] }] },
+  { key: "BASO", label: "Basophils", unit: "%", display: "integer", indent: true,
+    ranges: [{ ageMin: 0, ageMax: 200, M: [0, 1], F: [0, 1] }] },
+  { key: "OTHER", label: "Any—Other", unit: "%", display: "integer", indent: true,
+    ranges: [{ ageMin: 0, ageMax: 200, M: [0, 0], F: [0, 0] }], skipFlag: true },
+  // RBC and downstream
+  { key: "RBC", label: "Red Blood Cell Count", unit: "Mill./cmm", display: "decimal2",
+    ranges: [
+      { ageMin: 0, ageMax: 12, M: [3.8, 5.5], F: [3.8, 5.5] },
+      { ageMin: 12, ageMax: 200, M: [4.5, 6.5], F: [3.9, 5.5] }
+    ] },
+  { key: "HCT", label: "HCT", unit: "%", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [37.0, 50.0], F: [37.0, 50.0] }] },
+  { key: "MCV", label: "MCV", unit: "Fl", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [42.0, 95.0], F: [42.0, 95.0] }] },
+  { key: "MCH", label: "MCH", unit: "Picogram", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [27.0, 31.0], F: [27.0, 31.0] }] },
+  { key: "MCHC", label: "MCHC", unit: "g/dl", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [32.0, 36.0], F: [32.0, 36.0] }] },
+  { key: "RDW_CV", label: "RDW-CV", unit: "%", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [11.0, 14.5], F: [11.0, 14.5] }] },
+  { key: "RDW_SV", label: "RDW-SV", unit: "Fl", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [35.0, 56.0], F: [35.0, 56.0] }] },
+  { key: "PLT", label: "Platelet Count", unit: "Lac/cumm", display: "decimal2",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [1.5, 4.5], F: [1.5, 4.5] }] },
+  { key: "MPV", label: "MPV", unit: "Fl", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [7.0, 11.0], F: [7.0, 11.0] }] },
+  { key: "PDW", label: "PDW", unit: "%", display: "decimal",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [15.0, 17.0], F: [15.0, 17.0] }] },
+  { key: "PCT", label: "PCT", unit: "%", display: "decimal3",
+    ranges: [{ ageMin: 0, ageMax: 200, M: [0.108, 0.282], F: [0.108, 0.282] }] },
+];
+
+// Only the input parameters (not section headers)
+const INPUT_PARAMS = PARAMS.filter(p => !p.section);
+
+// Format a value for display based on its display type
+const formatValue = (val, displayType) => {
+  if (val === "" || val == null || isNaN(+val)) return "—";
+  const v = +val;
+  switch (displayType) {
+    case "integer": return String(Math.round(v));
+    case "decimal": return v.toFixed(1);
+    case "decimal2": return v.toFixed(2);
+    case "decimal3": return v.toFixed(3);
+    default: return String(v);
+  }
+}
+
+const rangeFor = (paramKey, age, gender) => {
+  const p = INPUT_PARAMS.find(x => x.key === paramKey);
+  if (!p) return null;
+  const a = +age || 30;
+  const g = gender === "F" ? "F" : "M";
+  const row = p.ranges.find(r => a >= r.ageMin && a < r.ageMax) || p.ranges[p.ranges.length - 1];
+  if (!row) return null;
+  const [min, max] = row[g];
+  return { min, max };
+};
+
+const formatRange = (paramKey, age, gender, displayType) => {
+  // Show gender-specific range label only when M and F differ (HGB, RBC)
+  const p = INPUT_PARAMS.find(x => x.key === paramKey);
+  if (!p) return "";
+  const a = +age || 30;
+  const row = p.ranges.find(r => a >= r.ageMin && a < r.ageMax) || p.ranges[p.ranges.length - 1];
+  if (!row) return "";
+  const [mMin, mMax] = row.M;
+  const [fMin, fMax] = row.F;
+  const fmt = (n) => {
+    if (displayType === "integer") return String(Math.round(n));
+    if (displayType === "decimal3") return n.toFixed(3);
+    if (displayType === "decimal2") return n.toFixed(2);
+    return n.toFixed(1);
+  };
+  if (mMin === fMin && mMax === fMax) {
+    return `${fmt(mMin)} – ${fmt(mMax)}`;
+  } else {
+    if (gender === "F") return `F=${fmt(fMin)}-${fmt(fMax)}`;
+    return `M=${fmt(mMin)}-${fmt(mMax)}`;
+  }
+};
+
+const flagOf = (paramKey, val, age, gender) => {
+  if (val === "" || val == null || isNaN(+val)) return "";
+  const p = INPUT_PARAMS.find(x => x.key === paramKey);
+  if (!p || p.skipFlag) return "";
+  const r = rangeFor(paramKey, age, gender);
+  if (!r) return "";
+  const v = +val;
+  if (v < r.min) return "L";
+  if (v > r.max) return "H";
+  return "";
+};
+
+const REPORTS_KEY = "cbc-reports-v3"; // bumped: schema changed
+const APIKEY_KEY = "cbc-gemini-key-v1";
+const LAB_KEY = "cbc-lab-config-v2"; // bumped: more fields
+const SUPA_KEY = "cbc-supabase-config-v1";
+
+const Icon = ({ d, className = "w-4 h-4" }) =>
+  h("svg", { viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.5, strokeLinecap: "round", strokeLinejoin: "round", className }, h("path", { d }));
+const I = {
+  plus: "M12 5v14M5 12h14",
+  history: "M3 3v5h5 M3.05 13A9 9 0 1 0 6 5.3L3 8",
+  search: "M21 21l-4.35-4.35 M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0z",
+  x: "M18 6L6 18 M6 6l12 12",
+  trash: "M3 6h18 M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6 M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2",
+  send: "M22 2L11 13 M22 2l-7 20-4-9-9-4 20-7z",
+  doc: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6",
+  download: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3",
+  upload: "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M17 8l-5-5-5 5 M12 3v12",
+  loader: "M21 12a9 9 0 1 1-6.219-8.56",
+  edit: "M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
+  scan: "M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2 M7 12h10",
+  camera: "M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  settings: "M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
+  eye: "M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z",
+  eyeOff: "M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94 M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19 M1 1l22 22",
+  refresh: "M23 4v6h-6 M1 20v-6h6 M3.51 9a9 9 0 0 1 14.85-3.36L23 10 M1 14l4.64 4.36A9 9 0 0 0 20.49 15",
+  arrow: "M5 12h14 M12 5l7 7-7 7",
+  link: "M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6 M15 3h6v6 M10 14L21 3",
+};
+
+// ====== Hooks ======
+const useSupabaseConfig = () => {
+  const [cfg, setCfg] = useState(() => { try { return JSON.parse(localStorage.getItem(SUPA_KEY) || "{}"); } catch { return {}; } });
+  const effective = useMemo(
+    () => (cfg.url && cfg.anonKey) ? cfg : (SUPA_URL && SUPA_ANON_KEY ? { url: SUPA_URL, anonKey: SUPA_ANON_KEY } : cfg),
+    [cfg]
+  );
+  return {
+    cfg: effective,
+    save: (c) => { setCfg(c); localStorage.setItem(SUPA_KEY, JSON.stringify(c)); },
+    clear: () => { setCfg({}); localStorage.removeItem(SUPA_KEY); }
+  };
+};
+const buildSupabaseClient = (cfg) => {
+  if (!cfg?.url || !cfg?.anonKey) return null;
+  try { return createClient(cfg.url, cfg.anonKey); } catch { return null; }
+};
+
+const useReports = (supabase) => {
+  const [reports, setReports] = useState(() => { try { return JSON.parse(localStorage.getItem(REPORTS_KEY) || "[]"); } catch { return []; }});
+  const [loading, setLoading] = useState(false);
+  const [syncError, setSyncError] = useState("");
+  const [lastSync, setLastSync] = useState(null);
+  useEffect(() => { try { localStorage.setItem(REPORTS_KEY, JSON.stringify(reports)); } catch {} }, [reports]);
+
+  const refresh = useCallback(async () => {
+    if (!supabase) return;
+    setLoading(true); setSyncError("");
+    try {
+      const { data, error } = await supabase.from("reports").select("*").order("created_at", { ascending: false }).limit(500);
+      if (error) throw error;
+      const mapped = (data || []).map(r => ({
+        id: r.report_no, cloudId: r.id, patient: r.patient_snapshot, values: r.values,
+        createdAt: r.created_at, editedAt: r.edited_at,
+      }));
+      setReports(mapped); setLastSync(new Date());
+    } catch (e) { setSyncError(e?.message || String(e)); }
+    finally { setLoading(false); }
+  }, [supabase]);
+
+  useEffect(() => { if (supabase) refresh(); }, [supabase, refresh]);
+
+  const addReport = async (report) => {
+    if (supabase) {
+      let patientId = null;
+      try {
+        if (report.patient.phone) {
+          const { data: existing } = await supabase.from("patients").select("id").eq("phone", report.patient.phone).maybeSingle();
+          if (existing) {
+            patientId = existing.id;
+            await supabase.from("patients").update({ name: report.patient.name, age: +report.patient.age || null, gender: report.patient.gender }).eq("id", patientId);
+          } else {
+            const { data: created } = await supabase.from("patients").insert({ name: report.patient.name, phone: report.patient.phone, age: +report.patient.age || null, gender: report.patient.gender }).select("id").single();
+            patientId = created?.id;
+          }
+        } else {
+          const { data: created } = await supabase.from("patients").insert({ name: report.patient.name, age: +report.patient.age || null, gender: report.patient.gender }).select("id").single();
+          patientId = created?.id;
+        }
+        const { data, error } = await supabase.from("reports").insert({ report_no: report.id, patient_id: patientId, patient_snapshot: report.patient, values: report.values }).select("*").single();
+        if (error) throw error;
+        const newReport = { id: data.report_no, cloudId: data.id, patient: data.patient_snapshot, values: data.values, createdAt: data.created_at, editedAt: data.edited_at };
+        setReports(prev => [newReport, ...prev]);
+        return newReport;
+      } catch (e) {
+        setSyncError(e?.message || String(e));
+        setReports(prev => [report, ...prev]);
+        return report;
+      }
+    } else {
+      setReports(prev => [report, ...prev]);
+      return report;
+    }
+  };
+
+  const updateReport = async (id, patch) => {
+    const target = reports.find(r => r.id === id);
+    if (!target) return;
+    const updated = { ...target, ...patch, editedAt: new Date().toISOString() };
+    if (supabase && target.cloudId) {
+      try {
+        const { error } = await supabase.from("reports").update({ patient_snapshot: updated.patient, values: updated.values, edited_at: updated.editedAt }).eq("id", target.cloudId);
+        if (error) throw error;
+      } catch (e) { setSyncError(e?.message || String(e)); }
+    }
+    setReports(prev => prev.map(r => r.id === id ? updated : r));
+    return updated;
+  };
+
+  const deleteReport = async (id) => {
+    const target = reports.find(r => r.id === id);
+    if (supabase && target?.cloudId) {
+      try { const { error } = await supabase.from("reports").delete().eq("id", target.cloudId); if (error) throw error; }
+      catch (e) { setSyncError(e?.message || String(e)); }
+    }
+    setReports(prev => prev.filter(r => r.id !== id));
+  };
+
+  const getPatientHistory = useCallback(async (phone) => {
+    if (!supabase || !phone) return [];
+    try {
+      const { data: patient } = await supabase.from("patients").select("id").eq("phone", phone).maybeSingle();
+      if (!patient) return [];
+      const { data, error } = await supabase.from("reports").select("*").eq("patient_id", patient.id).order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []).map(r => ({ id: r.report_no, cloudId: r.id, patient: r.patient_snapshot, values: r.values, createdAt: r.created_at, editedAt: r.edited_at }));
+    } catch { return []; }
+  }, [supabase]);
+
+  return { reports, loading, syncError, lastSync, addReport, updateReport, deleteReport, refresh, getPatientHistory, isCloud: !!supabase };
+};
+
+const useApiKey = () => ({ key: "server", isBuiltIn: true, save: () => {}, clear: () => {} });
+const useLab = () => {
+  const [lab, setLab] = useState(() => { try { return { ...DEFAULT_LAB, ...JSON.parse(localStorage.getItem(LAB_KEY) || "{}") }; } catch { return DEFAULT_LAB; }});
+  return { lab, save: (l) => { setLab(l); localStorage.setItem(LAB_KEY, JSON.stringify(l)); }};
+};
+const nextId = (reports) => {
+  const n = reports.length ? Math.max(...reports.map(r => parseInt(r.id.replace("R-",""))||0)) + 1 : 1;
+  return "R-" + String(n).padStart(4, "0");
+};
+
+// ====== Gemini (via server proxy — key stays in Vercel env) ======
+const callGemini = async (_key, dataUrl) => {
+  const base64 = dataUrl.split(",")[1];
+  const mimeMatch = dataUrl.match(/^data:(image\/[a-z+]+);/i);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  let res;
+  try {
+    res = await fetch("/api/scan", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ base64, mime })
+    });
+  } catch (e) { throw new Error(`Network error: ${e?.message || e}`); }
+  const data = await res.json();
+  if (!res.ok) throw new Error(data?.error || `Scan failed (${res.status})`);
+  const text = data.text;
+  if (!text) throw new Error("Empty response from server");
+  let parsed;
+  try { parsed = JSON.parse(text); }
+  catch { parsed = JSON.parse(text.replace(/```json|```/g, "").trim()); }
+  const values = {};
+  for (const p of INPUT_PARAMS) {
+    const v = parsed[p.key];
+    if (v != null && !isNaN(+v)) values[p.key] = +v;
+  }
+  return { values, raw: text };
+};
+
+// ====== PDF ======
+const generatePDF = (report, lab) => {
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const W = 210, H = 297, M = 14;
+  const RED = [155, 25, 30], BLUE = [29, 78, 216], DARK = [25, 25, 25], GREY = [110, 110, 110];
+  const dateStr = new Date(report.createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" });
+  let y = M + 2;
+
+  // ===== HEADER =====
+  const nameX = lab.logoDataUrl ? M + 22 : M;
+  if (lab.logoDataUrl) { try { doc.addImage(lab.logoDataUrl, "PNG", M, y, 18, 18); } catch {} }
+  doc.setFont("times", "bold"); doc.setFontSize(20); doc.setTextColor(...RED);
+  doc.text(lab.name || "LAB NAME", nameX, y + 7);
+  doc.setFont("times", "italic"); doc.setFontSize(9); doc.setTextColor(...GREY);
+  if (lab.address) doc.text(lab.address, nameX, y + 13);
+
+  doc.setFillColor(...RED);
+  doc.rect(W - M - 60, y, 60, 7, "F");
+  doc.setTextColor(255, 255, 255); doc.setFont("times", "bold"); doc.setFontSize(9.5);
+  doc.text(lab.tagline || "FULLY COMPUTERISED LAB", W - M - 30, y + 4.8, { align: "center" });
+  doc.setTextColor(...RED); doc.setFontSize(11);
+  doc.text(lab.phone || "", W - M, y + 13, { align: "right" });
+
+  y += 22;
+  doc.setDrawColor(...DARK); doc.setLineWidth(0.5); doc.line(M, y, W - M, y);
+  y += 1; doc.setLineWidth(0.2); doc.line(M, y, W - M, y);
+  y += 5;
+
+  // ===== PATIENT INFO BOX =====
+  const boxY = y;
+  doc.setFillColor(249, 247, 243); doc.setDrawColor(210, 205, 195); doc.setLineWidth(0.3);
+  doc.rect(M, boxY, W - 2 * M, 25, "FD");
+
+  const L1 = M + 4, V1 = M + 30, L2 = W / 2 + 4, V2 = W / 2 + 22;
+  y += 5;
+
+  const pRow = (label1, val1, label2, val2) => {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8); doc.setTextColor(...GREY);
+    doc.text(label1, L1, y); doc.text(label2, L2, y);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...DARK);
+    doc.text(val1, V1, y); doc.text(val2, V2, y);
+    y += 6;
+  };
+  pRow("Patient Name", report.patient.name || "—", "Sex", { M: "Male", F: "Female", O: "Other" }[report.patient.gender] || "—");
+  pRow("Referred by Dr.", report.patient.refBy || "—", "Age", report.patient.age ? `${report.patient.age} Years` : "—");
+  pRow("Lab Ref. No.", report.id, "Date", dateStr);
+
+  y = boxY + 31;
+
+  // ===== TITLE =====
+  doc.setFont("times", "bold"); doc.setFontSize(14); doc.setTextColor(...DARK);
+  doc.text("HAEMATOLOGICAL REPORT", W / 2, y, { align: "center" });
+  const tw = doc.getTextWidth("HAEMATOLOGICAL REPORT");
+  doc.setDrawColor(...RED); doc.setLineWidth(0.4);
+  doc.line(W / 2 - tw / 2, y + 1.5, W / 2 + tw / 2, y + 1.5);
+  y += 8;
+
+  // ===== TABLE HEADER ROW =====
+  const colInv = M + 2;   // investigation (left)
+  const colResult = 99;   // result (right-aligned)
+  const colFlag = 107;    // triangle flag (centred)
+  const colRange = 117;   // normal range (left)
+  const colUnit = W - M;  // unit (right-aligned)
+  const ROW_H = 6.2;
+
+  doc.setFillColor(...RED);
+  doc.rect(M, y - 4.5, W - 2 * M, 7, "F");
+  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+  doc.text("INVESTIGATION", colInv, y);
+  doc.text("RESULT", colResult, y, { align: "right" });
+  doc.text("FLAG", colFlag, y, { align: "center" });
+  doc.text("NORMAL RANGE", colRange, y);
+  doc.text("UNIT", colUnit, y, { align: "right" });
+  y += 3.5;
+
+  // ===== TABLE BODY =====
+  const fmtNum = (n, display) => {
+    if (display === "integer") return String(Math.round(n));
+    if (display === "decimal3") return n.toFixed(3);
+    if (display === "decimal2") return n.toFixed(2);
+    return n.toFixed(1);
+  };
+
+  for (const p of PARAMS) {
+    doc.setDrawColor(215, 210, 200); doc.setLineWidth(0.2);
+    doc.line(M, y - ROW_H + 2, W - M, y - ROW_H + 2);
+
+    if (p.section) {
+      y += 1.5;
+      doc.setFillColor(238, 233, 222); doc.setDrawColor(215, 210, 200); doc.setLineWidth(0.2);
+      doc.rect(M, y - 4, W - 2 * M, 6.5, "FD");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(...DARK);
+      doc.text(p.label.toUpperCase(), colInv, y);
+      y += 5;
+      continue;
+    }
+
+    const v = report.values[p.key];
+    const flag = flagOf(p.key, v, report.patient.age, report.patient.gender);
+    const isH = flag === "H", isL = flag === "L";
+
+    // Investigation name
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9.5); doc.setTextColor(...DARK);
+    doc.text(p.label, p.indent ? colInv + 5 : colInv, y);
+
+    // Result value — bold, coloured if abnormal
+    doc.setFont("helvetica", "bold"); doc.setTextColor(...(isH ? RED : isL ? BLUE : DARK));
+    doc.text(formatValue(v, p.display), colResult, y, { align: "right" });
+
+    // Flag: filled triangle drawn with jsPDF shapes
+    if (isH) {
+      doc.setFillColor(...RED);
+      doc.triangle(colFlag, y - 3.5, colFlag - 2.2, y + 0.5, colFlag + 2.2, y + 0.5, "F");
+    } else if (isL) {
+      doc.setFillColor(...BLUE);
+      doc.triangle(colFlag, y + 0.5, colFlag - 2.2, y - 3.5, colFlag + 2.2, y - 3.5, "F");
+    }
+
+    // Normal range — patient-specific (age + gender matched)
+    const ageRow = p.ranges.find(r => +report.patient.age >= r.ageMin && +report.patient.age < r.ageMax) || p.ranges[p.ranges.length - 1];
+    if (ageRow) {
+      const { M: mR, F: fR } = ageRow;
+      const gender = report.patient.gender;
+      doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
+      if (gender === "M" || gender === "F") {
+        const [rMin, rMax] = gender === "M" ? mR : fR;
+        doc.text(`${fmtNum(rMin, p.display)} - ${fmtNum(rMax, p.display)}`, colRange, y);
+      } else if (mR[0] === fR[0] && mR[1] === fR[1]) {
+        doc.text(`${fmtNum(mR[0], p.display)} - ${fmtNum(mR[1], p.display)}`, colRange, y);
+      } else {
+        doc.setFontSize(7.5);
+        doc.text(`M:${fmtNum(mR[0],p.display)}-${fmtNum(mR[1],p.display)}  F:${fmtNum(fR[0],p.display)}-${fmtNum(fR[1],p.display)}`, colRange, y);
+      }
+    }
+
+    // Unit
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(130, 130, 130);
+    doc.text(p.unit, colUnit, y, { align: "right" });
+
+    doc.setTextColor(...DARK);
+    y += ROW_H;
+  }
+
+  // Bottom rule
+  doc.setDrawColor(215, 210, 200); doc.setLineWidth(0.3);
+  doc.line(M, y - ROW_H + 2, W - M, y - ROW_H + 2);
+  y += 6;
+
+  // ===== END OF REPORT + SIGNATURE =====
+  doc.setFont("times", "italic"); doc.setFontSize(10); doc.setTextColor(...GREY);
+  doc.text("- - -  End of Report  - - -", W / 2, y, { align: "center" });
+  y += 12;
+
+  doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...DARK);
+  doc.text(lab.signatoryName || "Authorised Signatory", W - M, y, { align: "right" });
+  if (lab.signatoryQual) {
+    y += 4.5;
+    doc.setFont("helvetica", "normal"); doc.setFontSize(8.5); doc.setTextColor(...GREY);
+    doc.text(lab.signatoryQual, W - M, y, { align: "right" });
+  }
+
+  // ===== FOOTER =====
+  const footerY = H - 20;
+  doc.setDrawColor(180); doc.setLineWidth(0.3); doc.line(M, footerY - 2, W - M, footerY - 2);
+  doc.setFont("helvetica", "italic"); doc.setFontSize(6.5); doc.setTextColor(130);
+  const disclaimer = "Results declared may vary on account of chemical/kits and may contain human error. Please correlate clinically. Patient identity not verified. Analytical reports are to be used by medical practitioners & pathologists only and are not diagnostic results/opinion.";
+  doc.text(doc.splitTextToSize(disclaimer, W - 2 * M - 52), M, footerY);
+  if (lab.equipment) {
+    doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(130);
+    doc.text(lab.equipment, W - M, footerY, { align: "right" });
+  }
+
+  doc.setFillColor(...RED); doc.rect(0, H - 7, W, 7, "F");
+  doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(8.5);
+  doc.text(lab.jurisdiction || "", M + 2, H - 2.5);
+  doc.text("NOT VALID FOR MEDICO-LEGAL PURPOSE", W - M, H - 2.5, { align: "right" });
+
+  return doc;
+};
+
+const downloadPDF = (report, lab) => {
+  generatePDF(report, lab).save(`Hematology_${report.id}_${(report.patient.name || "patient").replace(/\s+/g,"_")}.pdf`);
+};
+const printPDF = (report, lab) => {
+  const doc = generatePDF(report, lab); doc.autoPrint();
+  const url = doc.output("bloburl");
+  const w = window.open(url);
+  if (!w) alert("Allow pop-ups to print.");
+};
+
+const whatsappLink = (report, lab) => {
+  let phone = (report.patient.phone || "").replace(/\D/g, "");
+  if (phone.length === 10) phone = (lab.whatsappCountryCode || "91") + phone;
+  const flagged = INPUT_PARAMS.map(p => ({ p, f: flagOf(p.key, report.values[p.key], report.patient.age, report.patient.gender) })).filter(x => x.f);
+  const summary = flagged.length
+    ? flagged.map(x => `${x.p.label}: ${formatValue(report.values[x.p.key], x.p.display)} ${x.p.unit} (${x.f === "H" ? "High" : "Low"})`).join("\n")
+    : "All parameters within reference range.";
+  const msg = `Namaste ${report.patient.name || ""},\n\nYour Hematology report (${report.id}) from ${lab.name} is ready.\n\nSummary:\n${summary}\n\n— ${lab.name}`;
+  return `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+};
+
+const exportAllData = (reports, lab) => {
+  const blob = new Blob([JSON.stringify({ exportedAt: new Date().toISOString(), version: 7, reports, lab }, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `cbc-lab-backup-${new Date().toISOString().slice(0,10)}.json`;
+  a.click(); URL.revokeObjectURL(url);
+};
+
+const Field = ({ label, hint, children }) =>
+  h("div", { className: "space-y-1" },
+    h("label", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, label),
+    h("div", null, children),
+    hint && h("div", { className: "text-xs", style: { color: "var(--muted)" } }, hint));
+
+// ====== Report View Modal ======
+const ReportViewModal = ({ report, lab, onClose, onEdit }) => {
+  if (!report) return null;
+  const { patient, values, id, createdAt } = report;
+  const flaggedCount = INPUT_PARAMS.filter(p => flagOf(p.key, values[p.key], patient.age, patient.gender)).length;
+  useEffect(() => {
+    const onKey = e => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return h("div", { className: "fixed inset-0 z-50 flex items-start justify-center scrim overflow-y-auto py-6 px-4", onClick: onClose },
+    h("div", { className: "w-full max-w-2xl reveal my-4", style: { background: "var(--bg)" }, onClick: e => e.stopPropagation() },
+      h("div", { className: "px-6 pt-6 pb-4", style: { borderBottom: "2px solid var(--line)" } },
+        h("div", { className: "flex items-start justify-between gap-4" },
+          h("div", { className: "min-w-0" },
+            h("div", { className: "flex items-center gap-2 flex-wrap" },
+              h("span", { className: "report-num text-base" }, id),
+              flaggedCount > 0 && h("span", { className: "badge-flagged" }, `${flaggedCount} flagged`)),
+            h("div", { className: "display text-2xl font-semibold mt-1" }, patient.name),
+            h("div", { className: "text-sm mono mt-1", style: { color: "var(--muted)" } },
+              [patient.age && `${patient.age}y`, patient.gender === "F" ? "Female" : patient.gender === "M" ? "Male" : "Other",
+               patient.phone, patient.refBy && `Ref: ${patient.refBy}`].filter(Boolean).join(" · ")),
+            h("div", { className: "smallcaps text-[10px] mt-2", style: { color: "var(--muted)" } },
+              new Date(createdAt).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }), " · ",
+              new Date(createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }))),
+          h("button", { onClick: onClose, className: "p-2 flex-shrink-0", style: { color: "var(--muted)" } },
+            h(Icon, { d: I.x })))),
+      h("div", { className: "px-6 py-4" },
+        h("div", { className: "result-row !py-2 !border-b-0 smallcaps text-[10px]", style: { color: "var(--muted)" } },
+          h("div", null, "Investigation"),
+          h("div", { className: "text-right" }, "Result"),
+          h("div", { className: "result-range text-right" }, "Normal Range"),
+          h("div", null)),
+        h("div", { className: "hairline" }),
+        h("div", null,
+          PARAMS.map(p => {
+            if (p.section) return h("div", { key: p.key, className: "result-row section-header" },
+              h("div", { className: "display text-sm font-semibold" }, p.label),
+              h("div", null), h("div", null), h("div", null));
+            const v = values[p.key];
+            const rangeLabel = formatRange(p.key, patient.age, patient.gender, p.display);
+            const flag = flagOf(p.key, v, patient.age, patient.gender);
+            const dv = (v != null && v !== "") ? String(v) : "—";
+            return h("div", { key: p.key, className: `result-row ${p.indent ? "indent" : ""}` },
+              h("div", null,
+                h("div", { className: "text-sm" }, p.label),
+                h("div", { className: "mono text-[10px]", style: { color: "var(--muted)" } }, p.unit)),
+              h("div", { className: `mono text-sm text-right font-semibold ${flag === "H" ? "flag-h" : flag === "L" ? "flag-l" : ""}` }, dv),
+              h("div", { className: "result-range mono text-[11px] text-right", style: { color: "var(--muted)" } }, rangeLabel),
+              h("div", { className: `mono text-base font-bold ${flag === "H" ? "flag-h" : flag === "L" ? "flag-l" : ""}` },
+                flag === "H" ? "↑" : flag === "L" ? "↓" : ""));
+          }))),
+      h("div", { className: "px-6 py-4 flex items-center gap-2 flex-wrap", style: { borderTop: "1px solid var(--hairline)", background: "var(--bg-2)" } },
+        h("button", { onClick: () => downloadPDF(report, lab), className: "btn-ghost flex items-center gap-1.5 text-xs" },
+          h(Icon, { d: I.download, className: "w-3.5 h-3.5" }), "PDF"),
+        h("button", { onClick: () => printPDF(report, lab), className: "btn-ghost flex items-center gap-1.5 text-xs" },
+          h(Icon, { d: I.doc, className: "w-3.5 h-3.5" }), "Print"),
+        patient.phone && h("a", { href: whatsappLink(report, lab), target: "_blank", rel: "noopener noreferrer",
+          className: "btn-ghost flex items-center gap-1.5 text-xs" },
+          h(Icon, { d: I.send, className: "w-3.5 h-3.5" }), "WhatsApp"),
+        h("div", { className: "ml-auto" },
+          h("button", { onClick: onEdit, className: "btn-primary flex items-center gap-1.5" },
+            h(Icon, { d: I.edit, className: "w-3.5 h-3.5" }), "Edit report")))));
+};
+
+// ====== Main ======
+function App() {
+  const supaCfg = useSupabaseConfig();
+  const supabase = useMemo(() => buildSupabaseClient(supaCfg.cfg), [supaCfg.cfg]);
+  const store = useReports(supabase);
+  const apiKey = useApiKey();
+  const labCfg = useLab();
+
+  const [tab, setTab] = useState("new");
+  const [query, setQuery] = useState("");
+  const [patient, setPatient] = useState({ name: "", age: "", gender: "M", phone: "", refBy: "" });
+  const [values, setValues] = useState(() => Object.fromEntries(INPUT_PARAMS.map(p => [p.key, p.key === "OTHER" ? "0" : ""])));
+  const [saveAttempted, setSaveAttempted] = useState(false);
+  const [justSaved, setJustSaved] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [viewReport, setViewReport] = useState(null);
+  const [patientHistory, setPatientHistory] = useState([]);
+
+  const [scanOpen, setScanOpen] = useState(false);
+  const [scanMode, setScanMode] = useState(null);
+  const [scanImage, setScanImage] = useState(null);
+  const [scanStatus, setScanStatus] = useState("");
+  const [scanResult, setScanResult] = useState(null);
+  const [scanError, setScanError] = useState("");
+  const fileRef = useRef(null);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  const streamRef = useRef(null);
+
+  useEffect(() => {
+    if (!supabase || !patient.phone || patient.phone.length !== 10 || editingId) { setPatientHistory([]); return; }
+    let cancelled = false;
+    store.getPatientHistory(patient.phone).then(h => { if (!cancelled) setPatientHistory(h); });
+    return () => { cancelled = true; };
+  }, [patient.phone, supabase, editingId]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return store.reports;
+    return store.reports.filter(r => r.patient.name.toLowerCase().includes(q) || (r.patient.phone || "").includes(q) || r.id.toLowerCase().includes(q));
+  }, [query, store.reports]);
+
+  const canSave = patient.name.trim() && INPUT_PARAMS.every(p => values[p.key] !== "" && !isNaN(+values[p.key]));
+  const flaggedCount = useMemo(() => INPUT_PARAMS.filter(p => flagOf(p.key, values[p.key], patient.age, patient.gender)).length, [values, patient.age, patient.gender]);
+
+  const startEdit = (report) => {
+    setEditingId(report.id);
+    setPatient({ refBy: "", ...report.patient });
+    setValues(Object.fromEntries(INPUT_PARAMS.map(p => [p.key, String(report.values[p.key] ?? "")])));
+    setTab("new"); setJustSaved(null);
+  };
+  const cancelEdit = () => {
+    setEditingId(null);
+    setPatient({ name: "", age: "", gender: "M", phone: "", refBy: "" });
+    setValues(Object.fromEntries(INPUT_PARAMS.map(p => [p.key, p.key === "OTHER" ? "0" : ""])));
+    setSaveAttempted(false);
+  };
+
+  const handleSave = async () => {
+    if (editingId) {
+      const updated = await store.updateReport(editingId, {
+        patient: { ...patient },
+        values: Object.fromEntries(INPUT_PARAMS.map(p => [p.key, +values[p.key]])),
+      });
+      setJustSaved(updated); setEditingId(null);
+    } else {
+      const newReport = {
+        id: nextId(store.reports),
+        patient: { ...patient },
+        values: Object.fromEntries(INPUT_PARAMS.map(p => [p.key, +values[p.key]])),
+        createdAt: new Date().toISOString(),
+      };
+      const saved = await store.addReport(newReport);
+      setJustSaved(saved);
+    }
+    setPatient({ name: "", age: "", gender: "M", phone: "", refBy: "" });
+    setValues(Object.fromEntries(INPUT_PARAMS.map(p => [p.key, p.key === "OTHER" ? "0" : ""])));
+    setPatientHistory([]); setSaveAttempted(false);
+  };
+
+  const fillFromPrevious = (prev) => setPatient({ refBy: "", ...prev.patient });
+
+  const runScan = async (dataUrl) => {
+    if (!apiKey.key) { setScanError("Add your Gemini key in Settings."); setScanStatus("error"); return; }
+    setScanStatus("running"); setScanError("");
+    try {
+      const result = await callGemini(apiKey.key, dataUrl);
+      setScanResult(result); setScanStatus("done");
+    } catch (e) { setScanError(e?.message || String(e)); setScanStatus("error"); }
+  };
+
+  const onFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => { setScanImage(e.target.result); runScan(e.target.result); };
+    reader.readAsDataURL(file);
+  };
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      streamRef.current = stream;
+      if (videoRef.current) { videoRef.current.srcObject = stream; await videoRef.current.play(); }
+    } catch { alert("Camera unavailable."); setScanMode(null); }
+  };
+  const stopCamera = () => { if (streamRef.current) { streamRef.current.getTracks().forEach(t => t.stop()); streamRef.current = null; }};
+  const captureFrame = () => {
+    const v = videoRef.current, c = canvasRef.current;
+    if (!v || !c) return;
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext("2d").drawImage(v, 0, 0);
+    const url = c.toDataURL("image/jpeg", 0.92);
+    setScanImage(url); stopCamera(); runScan(url);
+  };
+  useEffect(() => {
+    if (scanMode === "camera" && scanOpen && !scanImage) startCamera();
+    return () => { if (scanMode === "camera") stopCamera(); };
+  }, [scanMode, scanOpen]);
+
+  const closeScan = () => {
+    stopCamera();
+    setScanOpen(false); setScanMode(null); setScanImage(null);
+    setScanResult(null); setScanStatus(""); setScanError("");
+  };
+  const applyScanResult = () => {
+    if (!scanResult) return;
+    const next = { ...values };
+    for (const k of Object.keys(scanResult.values)) next[k] = String(scanResult.values[k]);
+    setValues(next);
+    closeScan();
+  };
+
+  const filledCount = scanResult ? Object.keys(scanResult.values).length : 0;
+  const todayCount = store.reports.filter(r => new Date(r.createdAt).toDateString() === new Date().toDateString()).length;
+
+  return h("div", { className: "min-h-screen", style: { background: "var(--bg)" } },
+    // HEADER
+    h("header", { className: "border-b sticky top-0 z-20", style: { background: "var(--bg)", borderColor: "var(--line)" } },
+      h("div", { className: "max-w-6xl mx-auto px-5 sm:px-8 py-4" },
+        h("div", { className: "flex items-center justify-between gap-4" },
+          h("div", { className: "flex items-center gap-3 min-w-0" },
+            labCfg.lab.logoDataUrl
+              ? h("img", { src: labCfg.lab.logoDataUrl, alt: "logo", className: "w-9 h-9 object-contain flex-shrink-0" })
+              : h("div", { className: "w-9 h-9 flex items-center justify-center flex-shrink-0", style: { background: "var(--accent)", color: "var(--bg)" } },
+                h("span", { className: "display text-base font-bold" }, labCfg.lab.short || "L")),
+            h("div", { className: "min-w-0" },
+              h("h1", { className: "display text-base sm:text-lg font-semibold leading-tight truncate" }, labCfg.lab.name || "Lab"),
+              h("div", { className: "smallcaps text-[10px] mt-0.5 flex items-center gap-2", style: { color: "var(--muted)" } },
+                labCfg.lab.branch && h("span", null, labCfg.lab.branch),
+                h("span", null, "·"),
+                h("span", null, "Hematology"),
+                store.isCloud && h(React.Fragment, null,
+                  h("span", null, "·"),
+                  h("span", { style: { color: "var(--good)" } }, "● Synced"))
+              )
+            )
+          ),
+          h("button", { onClick: () => setSettingsOpen(true), className: "p-2 transition", style: { color: "var(--muted)" }, title: "Settings" },
+            h(Icon, { d: I.settings }))
+        ),
+        h("nav", { className: "mt-4 flex items-center gap-1 -mb-px" },
+          h("button", { onClick: () => { setTab("new"); cancelEdit(); }, className: `tab-link ${tab==="new"?"active":""}` }, "New report"),
+          h("button", { onClick: () => setTab("history"), className: `tab-link ${tab==="history"?"active":""}` },
+            "Archive ", h("span", { className: "mono ml-1" }, `(${store.reports.length})`)),
+          h("div", { className: "ml-auto flex items-center gap-3 text-xs", style: { color: "var(--muted)" } },
+            h("span", { className: "smallcaps text-[10px]" }, "Today"),
+            h("span", { className: "mono" }, String(todayCount).padStart(3, "0")))
+        )
+      )
+    ),
+
+    h("main", { className: "max-w-6xl mx-auto px-5 sm:px-8 py-8" },
+      store.syncError && h("div", { className: "mb-6 px-4 py-3 text-xs reveal", style: { background: "var(--accent-soft)", color: "var(--accent)", borderLeft: "2px solid var(--accent)" } },
+        h("span", { className: "smallcaps" }, "Sync error · "), store.syncError),
+
+
+      editingId && h("div", { className: "mb-6 px-4 py-3 flex items-center justify-between text-sm reveal", style: { background: "var(--accent-soft)", borderLeft: "2px solid var(--accent)" } },
+        h("div", null,
+          h("span", { className: "smallcaps text-[10px] mr-2", style: { color: "var(--accent)" } }, "Editing"),
+          h("span", { className: "mono" }, editingId)),
+        h("button", { onClick: cancelEdit, className: "text-xs underline", style: { color: "var(--accent)" } }, "Cancel")),
+
+      tab === "new"
+        ? h("div", { className: "grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 reveal" },
+          // LEFT: PATIENT
+          h("section", { className: "lg:col-span-5 space-y-6" },
+            h("div", { className: "flex items-baseline justify-between" },
+              h("h2", { className: "display text-2xl sm:text-3xl font-semibold" }, "Patient"),
+              h("span", { className: "report-num text-lg" }, `№ ${editingId || nextId(store.reports)}`)),
+            h("div", { className: "hairline-strong" }),
+            h("div", { className: "space-y-5 pt-2" },
+              h(Field, { label: "Full name" },
+                h("input", { value: patient.name, onChange: e => setPatient({ ...patient, name: e.target.value }),
+                  className: "field-input display text-xl", placeholder: "Veerpal Kaur" })),
+              h("div", { className: "grid grid-cols-2 gap-6" },
+                h(Field, { label: "Age (years)" },
+                  h("input", { value: patient.age, onChange: e => setPatient({ ...patient, age: e.target.value.replace(/\D/g,"") }),
+                    inputMode: "numeric", className: "field-input mono", placeholder: "16" })),
+                h(Field, { label: "Sex" },
+                  h("select", { value: patient.gender, onChange: e => setPatient({ ...patient, gender: e.target.value }),
+                    className: "field-input" },
+                    h("option", { value: "M" }, "Male"), h("option", { value: "F" }, "Female"), h("option", { value: "O" }, "Other")))
+              ),
+              h(Field, { label: "Phone" },
+                h("input", { value: patient.phone, onChange: e => setPatient({ ...patient, phone: e.target.value.replace(/\D/g,"").slice(0,10) }),
+                  inputMode: "numeric", className: "field-input mono", placeholder: "9876543210" })),
+              h(Field, { label: "Referred by" },
+                h("input", { value: patient.refBy, onChange: e => setPatient({ ...patient, refBy: e.target.value }),
+                  className: "field-input", placeholder: "Dr. (optional)" }))
+            ),
+
+            patientHistory.length > 0 && !editingId && h("div", { className: "mt-6 pt-4 border-t reveal", style: { borderColor: "var(--hairline)" } },
+              h("div", { className: "smallcaps text-[10px] mb-3", style: { color: "var(--muted)" } },
+                `Returning patient · ${patientHistory.length} prior visit${patientHistory.length>1?"s":""}`),
+              h("button", { onClick: () => fillFromPrevious(patientHistory[0]),
+                className: "text-sm underline mb-3" }, `Use details from ${patientHistory[0].patient.name}`),
+              h("ul", { className: "space-y-1 text-xs mono", style: { color: "var(--muted)" } },
+                patientHistory.slice(0, 4).map(p =>
+                  h("li", { key: p.id, className: "flex justify-between" },
+                    h("span", null, p.id),
+                    h("span", null, new Date(p.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short", year:"numeric" })))))
+            ),
+
+            h("div", { className: "pt-4" },
+              h("button", { onClick: () => setScanOpen(true),
+                className: "w-full text-left flex items-center justify-between py-4 px-5 transition",
+                style: { background: "var(--ink)", color: "var(--bg)" } },
+                h("div", null,
+                  h("div", { className: "smallcaps text-[10px] opacity-75" }, "Optional"),
+                  h("div", { className: "text-base mt-1" }, "Auto-fill from photo")),
+                h(Icon, { d: I.scan, className: "w-5 h-5" }))
+            )
+          ),
+
+          h("div", { className: "hidden lg:block lg:col-span-1" },
+            h("div", { className: "h-full mx-auto", style: { width: "1px", background: "var(--hairline)" } })),
+
+          // RIGHT: RESULTS
+          h("section", { className: "lg:col-span-6 space-y-6" },
+            h("div", { className: "flex items-baseline justify-between gap-4" },
+              h("h2", { className: "display text-2xl sm:text-3xl font-semibold" }, "Haemological Report"),
+              h("div", { className: "smallcaps text-[10px] text-right", style: { color: "var(--muted)" } },
+                patient.age ? `${patient.gender === "F" ? "♀" : "♂"} · age ${patient.age}` : `${INPUT_PARAMS.length} markers`)
+            ),
+            h("div", { className: "hairline-strong" }),
+
+            // Column header
+            h("div", { className: "result-row !py-2 !border-b-0 smallcaps text-[10px]", style: { color: "var(--muted)" } },
+              h("div", null, "Investigation"),
+              h("div", { className: "text-right" }, "Result"),
+              h("div", { className: "result-range text-right" }, "Normal Range"),
+              h("div", null)
+            ),
+            h("div", { className: "hairline" }),
+
+            h("div", null,
+              PARAMS.map((p) => {
+                if (p.section) {
+                  return h("div", { key: p.key, className: "result-row section-header" },
+                    h("div", { className: "display text-sm font-semibold" }, p.label),
+                    h("div", null), h("div", null), h("div", null));
+                }
+                const v = values[p.key];
+                const rangeLabel = formatRange(p.key, patient.age, patient.gender, p.display);
+                const flag = flagOf(p.key, v, patient.age, patient.gender);
+                return h("div", { key: p.key, className: `result-row ${p.indent ? "indent" : ""}` },
+                  h("div", null,
+                    h("div", { className: "text-sm" }, p.label),
+                    h("div", { className: "mono text-[10px]", style: { color: "var(--muted)" } }, p.unit)
+                  ),
+                  h("input", { type: "number", step: p.display === "decimal3" ? "0.001" : p.display === "integer" ? "1" : "0.01",
+                    inputMode: "decimal", value: v,
+                    onChange: e => setValues({ ...values, [p.key]: e.target.value }),
+                    className: "result-input", placeholder: "—",
+                    style: saveAttempted && (v === "" || isNaN(+v)) ? { borderColor: "var(--accent)", background: "var(--accent-soft)" } : {} }),
+                  h("div", { className: "result-range mono text-[11px] text-right", style: { color: "var(--muted)" } }, rangeLabel),
+                  h("div", { className: `mono text-base font-bold ${flag === "H" ? "flag-h" : flag === "L" ? "flag-l" : ""}` },
+                    flag === "H" ? "↑" : flag === "L" ? "↓" : "")
+                );
+              })
+            ),
+
+            h("div", { className: "desktop-save pt-6 flex items-center justify-between gap-4 flex-wrap" },
+              h("div", { className: "text-xs", style: { color: "var(--muted)" } },
+                (() => {
+                  if (canSave) return flaggedCount > 0
+                    ? h("span", null, h("span", { className: "smallcaps", style: { color: "var(--accent)" } }, `${flaggedCount} flagged · `), "Ready to ", editingId ? "update" : "save")
+                    : h("span", { className: "smallcaps" }, "All within range · Ready");
+                  if (saveAttempted) {
+                    const emptyFields = INPUT_PARAMS.filter(p => values[p.key] === "" || isNaN(+values[p.key]));
+                    return h("span", { style: { color: "var(--accent)" } },
+                      !patient.name.trim() ? "Patient name is required" :
+                      emptyFields.length ? `${emptyFields.length} result${emptyFields.length > 1 ? "s" : ""} still empty: ${emptyFields.slice(0,3).map(p=>p.label).join(", ")}${emptyFields.length > 3 ? "…" : ""}` :
+                      "Please fill all fields");
+                  }
+                  return h("span", null, "Fill patient name + all results to save");
+                })()
+              ),
+              h("button", { onClick: () => { if (canSave) { setSaveAttempted(false); handleSave(); } else setSaveAttempted(true); }, className: "btn-primary flex items-center gap-2" },
+                editingId ? "Update report" : "Save & generate", h(Icon, { d: I.arrow, className: "w-3.5 h-3.5" }))
+            ),
+
+            h("div", { className: "mobile-save-bar" },
+              h("div", { className: "text-sm", style: { color: "var(--muted)" } },
+                canSave
+                  ? flaggedCount > 0
+                    ? h("span", { style: { color: "var(--accent)", fontWeight: 600 } }, `${flaggedCount} flagged`)
+                    : h("span", null, "Ready")
+                  : saveAttempted
+                    ? h("span", { style: { color: "var(--accent)" } }, !patient.name.trim() ? "Name required" : "Fields empty")
+                    : h("span", null, "Fill all fields")
+              ),
+              h("button", { onClick: () => { if (canSave) { setSaveAttempted(false); handleSave(); } else setSaveAttempted(true); }, className: "btn-primary flex items-center gap-2" },
+                editingId ? "Update" : "Save & generate", h(Icon, { d: I.arrow, className: "w-3.5 h-3.5" }))
+            )
+          ),
+
+          justSaved && h("div", { className: "lg:col-span-12 reveal mt-4" },
+            h("div", { className: "px-6 py-5 flex items-center justify-between flex-wrap gap-4", style: { background: "var(--ink)", color: "var(--bg)" } },
+              h("div", null,
+                h("div", { className: "smallcaps text-[10px] opacity-60" }, "Saved · ", justSaved.id),
+                h("div", { className: "display text-xl mt-1" }, justSaved.patient.name),
+                h("div", { className: "text-xs opacity-60 mt-0.5 mono" }, new Date(justSaved.createdAt).toLocaleString("en-IN"))),
+              h("div", { className: "flex flex-wrap gap-2" },
+                h("button", { onClick: () => downloadPDF(justSaved, labCfg.lab),
+                  className: "px-4 py-2 text-sm flex items-center gap-2 transition", style: { background: "var(--bg)", color: "var(--ink)" } },
+                  h(Icon, { d: I.download, className: "w-3.5 h-3.5" }), "Download PDF"),
+                h("button", { onClick: () => printPDF(justSaved, labCfg.lab),
+                  className: "px-4 py-2 text-sm flex items-center gap-2", style: { background: "transparent", color: "var(--bg)", border: "1px solid var(--bg)" } },
+                  h(Icon, { d: I.doc, className: "w-3.5 h-3.5" }), "Print"),
+                justSaved.patient.phone && h("a", { href: whatsappLink(justSaved, labCfg.lab), target: "_blank", rel: "noopener noreferrer",
+                  className: "px-4 py-2 text-sm flex items-center gap-2", style: { background: "var(--accent)", color: "var(--paper)" } },
+                  h(Icon, { d: I.send, className: "w-3.5 h-3.5" }), "WhatsApp")
+              )
+            )
+          )
+        )
+        : h("div", { className: "reveal" },
+          h("div", { className: "flex items-baseline justify-between mb-4 flex-wrap gap-2" },
+            h("h2", { className: "display text-3xl font-semibold" }, "Archive"),
+            h("div", { className: "flex items-center gap-2" },
+              store.isCloud && h("button", { onClick: store.refresh, disabled: store.loading,
+                className: "p-2 transition", style: { color: "var(--muted)" }, title: "Sync" },
+                h(Icon, { d: I.refresh, className: `w-4 h-4 ${store.loading ? "animate-spin" : ""}` })),
+              h("button", { onClick: () => exportAllData(store.reports, labCfg.lab),
+                className: "btn-ghost flex items-center gap-1.5" },
+                h(Icon, { d: I.download, className: "w-3 h-3" }), "Export"))
+          ),
+          h("div", { className: "hairline-strong mb-4" }),
+          h("div", { className: "flex items-center gap-3 pb-3 mb-2 border-b", style: { borderColor: "var(--hairline)" } },
+            h(Icon, { d: I.search, className: "w-4 h-4", style: { color: "var(--muted)" } }),
+            h("input", { value: query, onChange: e => setQuery(e.target.value),
+              placeholder: "Name, phone, or report №…",
+              className: "flex-1 bg-transparent outline-none text-sm" }),
+            h("span", { className: "mono text-xs", style: { color: "var(--muted)" } }, `${filtered.length} / ${store.reports.length}`)
+          ),
+          filtered.length === 0
+            ? h("div", { className: "py-24 text-center" },
+              h("div", { className: "display text-2xl mb-1", style: { color: "var(--muted)" } },
+                store.reports.length === 0 ? "No reports yet" : "No matches"),
+              h("div", { className: "text-xs", style: { color: "var(--muted)" } },
+                store.reports.length === 0 ? "Save your first one from the New tab" : "Try a different search"))
+            : h("ul", null,
+              filtered.map((r) => {
+                const flagged = INPUT_PARAMS.filter(p => flagOf(p.key, r.values[p.key], r.patient.age, r.patient.gender)).length;
+                return h("li", { key: r.id, className: "py-4 flex items-center gap-3 sm:gap-4 hover:bg-stone-100/50 transition px-2 -mx-2 border-b cursor-pointer",
+                  style: { borderColor: "var(--hairline)" }, onClick: () => setViewReport(r) },
+                  h("div", { className: "report-num text-base flex-shrink-0 hidden sm:block w-16" }, r.id),
+                  h("div", { className: "flex-1 min-w-0" },
+                    h("div", { className: "display text-base sm:text-lg truncate" }, r.patient.name),
+                    h("div", { className: "text-xs mono mt-0.5", style: { color: "var(--muted)" } },
+                      `${r.patient.age || "—"}y · ${r.patient.gender} · ${r.patient.phone || "no phone"}`,
+                      r.editedAt && h("span", { className: "ml-2", style: { color: "var(--accent)" } }, "edited"))),
+                  h("div", { className: "text-xs mono text-right hidden sm:block flex-shrink-0", style: { color: "var(--muted)" } },
+                    new Date(r.createdAt).toLocaleDateString("en-IN", { day:"2-digit", month:"short" }), h("br"),
+                    new Date(r.createdAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" })),
+                  flagged > 0 && h("span", { className: "badge-flagged flex-shrink-0" }, `${flagged}`),
+                  h("div", { className: "flex items-center gap-1 flex-shrink-0" },
+                    h("button", { onClick: e => { e.stopPropagation(); startEdit(r); }, className: "p-1.5 transition", style: { color: "var(--muted)" }, title: "Edit" },
+                      h(Icon, { d: I.edit })),
+                    h("button", { onClick: e => { e.stopPropagation(); downloadPDF(r, labCfg.lab); },
+                      className: "p-1.5 transition", style: { color: "var(--muted)" }, title: "PDF" },
+                      h(Icon, { d: I.download })),
+                    r.patient.phone && h("a", { href: whatsappLink(r, labCfg.lab), target: "_blank", rel: "noopener noreferrer",
+                      className: "p-1.5 transition", style: { color: "var(--muted)" }, title: "WhatsApp",
+                      onClick: e => e.stopPropagation() },
+                      h(Icon, { d: I.send })),
+                    h("button", { onClick: e => { e.stopPropagation(); if (confirm(`Delete ${r.id}?`)) store.deleteReport(r.id); },
+                      className: "p-1.5 transition", style: { color: "var(--muted)" }, title: "Delete" },
+                      h(Icon, { d: I.trash }))));
+              })
+            )
+        ),
+
+      h("footer", { className: "mt-20 pt-6 border-t flex items-center justify-between text-xs flex-wrap gap-2",
+        style: { borderColor: "var(--hairline)", color: "var(--muted)" } },
+        h("span", { className: "smallcaps" }, `${labCfg.lab.name || "Lab"} · ${labCfg.lab.branch || ""}`),
+        h("span", { className: "mono" }, store.lastSync ? `Synced ${store.lastSync.toLocaleTimeString("en-IN")}` : "v7"))
+    ),
+
+    settingsOpen && h(SettingsModal, { apiKey, labCfg, supaCfg, store, onClose: () => setSettingsOpen(false) }),
+    viewReport && h(ReportViewModal, { report: viewReport, lab: labCfg.lab, onClose: () => setViewReport(null), onEdit: () => { startEdit(viewReport); setViewReport(null); } }),
+
+    scanOpen && h(ScanModal, { apiKey, scanMode, setScanMode, scanImage, scanStatus, scanResult, scanError, filledCount,
+      videoRef, canvasRef, fileRef, onFile, captureFrame, stopCamera, applyScanResult, closeScan })
+  );
+}
+
+function ScanModal({ apiKey, scanMode, setScanMode, scanImage, scanStatus, scanResult, scanError, filledCount, videoRef, canvasRef, fileRef, onFile, captureFrame, stopCamera, applyScanResult, closeScan }) {
+  return h("div", { className: "fixed inset-0 scrim flex items-end sm:items-center justify-center z-50 p-2 sm:p-4" },
+    h("div", { className: "max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col reveal", style: { background: "var(--bg)", border: "1px solid var(--line)" } },
+      h("div", { className: "px-6 py-5 flex items-center justify-between border-b", style: { borderColor: "var(--line)" } },
+        h("div", null,
+          h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Scan"),
+          h("h3", { className: "display text-xl mt-0.5" }, "Auto-fill from photo")),
+        h("button", { onClick: closeScan, className: "p-1 transition", style: { color: "var(--muted)" } }, h(Icon, { d: I.x }))),
+      h("input", { ref: fileRef, id: "cbc-file-input", type: "file", accept: "image/*", className: "hidden",
+        onChange: e => { const f = e.target.files?.[0]; if (f) { setScanMode("upload"); onFile(f); } e.target.value = ""; } }),
+      h("div", { className: "p-6 overflow-y-auto flex-1" },
+        !scanMode && h("div", { className: "grid grid-cols-2 gap-3" },
+          h("label", { htmlFor: "cbc-file-input", className: "py-10 flex flex-col items-center gap-3 transition cursor-pointer",
+            style: { background: "var(--bg-2)", border: "1px solid var(--hairline)" } },
+            h(Icon, { d: I.upload, className: "w-7 h-7" }),
+            h("div", { className: "text-center" },
+              h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Method 1"),
+              h("div", { className: "text-sm font-medium mt-1" }, "Upload photo"))),
+          h("button", { onClick: () => setScanMode("camera"), className: "py-10 flex flex-col items-center gap-3 transition",
+            style: { background: "var(--bg-2)", border: "1px solid var(--hairline)" } },
+            h(Icon, { d: I.camera, className: "w-7 h-7" }),
+            h("div", { className: "text-center" },
+              h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Method 2"),
+              h("div", { className: "text-sm font-medium mt-1" }, "Use camera")))
+        ),
+        scanMode === "camera" && !scanImage && h("div", { className: "space-y-3" },
+          h("div", { className: "bg-black overflow-hidden aspect-video flex items-center justify-center" },
+            h("video", { ref: videoRef, className: "max-w-full max-h-full", playsInline: true, muted: true })),
+          h("div", { className: "flex justify-center gap-2" },
+            h("button", { onClick: captureFrame, className: "btn-primary" }, "Capture"),
+            h("button", { onClick: () => { stopCamera(); setScanMode(null); }, className: "btn-ghost" }, "Back")),
+          h("canvas", { ref: canvasRef, className: "hidden" })
+        ),
+        scanImage && h("div", { className: "space-y-5" },
+          h("img", { src: scanImage, alt: "scan", className: "w-full max-h-64 object-contain", style: { background: "var(--bg-2)", border: "1px solid var(--hairline)" } }),
+          scanStatus === "running" && h("div", { className: "flex items-center gap-2 text-sm" },
+            h(Icon, { d: I.loader, className: "w-4 h-4 animate-spin" }), " Reading values…"),
+          scanStatus === "error" && h("div", { className: "text-sm p-4", style: { background: "var(--accent-soft)", color: "var(--accent)", borderLeft: "2px solid var(--accent)" } },
+            h("div", { className: "smallcaps text-[10px] mb-1" }, "Failed"),
+            scanError && h("div", { className: "mono text-xs break-all" }, scanError)),
+          scanStatus === "done" && scanResult && h("div", { className: "space-y-4" },
+            h("div", { className: "py-3 px-4", style: { background: filledCount >= 15 ? "var(--bg-2)" : "var(--accent-soft)", borderLeft: `2px solid ${filledCount >= 15 ? "var(--ink)" : "var(--accent)"}` } },
+              h("span", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Result · "),
+              h("strong", { className: "mono" }, `${filledCount}/${INPUT_PARAMS.length}`),
+              filledCount < INPUT_PARAMS.length && h("span", { className: "ml-2 text-xs", style: { color: "var(--muted)" } }, "Review missed ones manually")),
+            h("div", { className: "grid grid-cols-2 gap-x-6 gap-y-1" },
+              INPUT_PARAMS.map(p => {
+                const v = scanResult.values[p.key];
+                return h("div", { key: p.key, className: "flex justify-between py-2 border-b text-sm", style: { borderColor: "var(--hairline)" } },
+                  h("span", null, p.label),
+                  h("span", { className: "mono", style: { color: v != null ? "var(--ink)" : "var(--accent)" } },
+                    v != null ? formatValue(v, p.display) : "—"));
+              })))
+        )
+      ),
+      scanStatus === "done" && h("div", { className: "px-6 py-4 flex justify-end gap-2 border-t", style: { background: "var(--bg-2)", borderColor: "var(--line)" } },
+        h("button", { onClick: closeScan, className: "btn-ghost" }, "Cancel"),
+        h("button", { onClick: applyScanResult, className: "btn-primary" }, "Use these values"))
+    )
+  );
+}
+
+function SettingsModal({ apiKey, labCfg, supaCfg, store, onClose }) {
+  const [keyDraft, setKeyDraft] = useState(apiKey.key);
+  const [showKey, setShowKey] = useState(false);
+  const [labDraft, setLabDraft] = useState(labCfg.lab);
+  const [supaDraft, setSupaDraft] = useState({ url: supaCfg.cfg.url || "", anonKey: supaCfg.cfg.anonKey || "" });
+  const [showSupaKey, setShowSupaKey] = useState(false);
+  const [section, setSection] = useState("lab");
+  const [testStatus, setTestStatus] = useState("");
+
+  const onLogoFile = (file) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => setLabDraft({ ...labDraft, logoDataUrl: e.target.result });
+    reader.readAsDataURL(file);
+  };
+
+  const testConnection = async () => {
+    setTestStatus("testing");
+    try {
+      const client = createClient(supaDraft.url, supaDraft.anonKey);
+      const { error } = await client.from("reports").select("id").limit(1);
+      if (error) throw error;
+      setTestStatus("ok");
+    } catch (e) { setTestStatus("fail:" + (e?.message || e)); }
+  };
+
+  return h("div", { className: "fixed inset-0 scrim flex items-end sm:items-center justify-center z-50 p-2 sm:p-4" },
+    h("div", { className: "max-w-2xl w-full max-h-[92vh] overflow-hidden flex flex-col reveal", style: { background: "var(--bg)", border: "1px solid var(--line)" } },
+      h("div", { className: "px-6 py-5 flex items-center justify-between border-b", style: { borderColor: "var(--line)" } },
+        h("div", null,
+          h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Configuration"),
+          h("h3", { className: "display text-xl mt-0.5" }, "Settings")),
+        h("button", { onClick: onClose, className: "p-1", style: { color: "var(--muted)" } }, h(Icon, { d: I.x }))),
+      h("div", { className: "flex border-b overflow-x-auto", style: { borderColor: "var(--hairline)" } },
+        ["lab", "scanning", "cloud", "backup"].map(s =>
+          h("button", { key: s, onClick: () => setSection(s),
+            className: `px-5 py-3 text-xs whitespace-nowrap transition ${section===s ? "font-semibold" : ""}`,
+            style: { color: section === s ? "var(--ink)" : "var(--muted)", borderBottom: section === s ? "2px solid var(--ink)" : "2px solid transparent", marginBottom: "-1px" } },
+            { lab: "Lab branding", scanning: "Scanning", cloud: "Cloud database", backup: "Backup" }[s]))),
+
+      h("div", { className: "p-6 overflow-y-auto flex-1 space-y-5" },
+        section === "lab" && h(React.Fragment, null,
+          h(Field, { label: "Lab name (uppercase preferred)" },
+            h("input", { value: labDraft.name, onChange: e => setLabDraft({ ...labDraft, name: e.target.value }), className: "field-input display text-lg" })),
+          h("div", { className: "grid grid-cols-2 gap-5" },
+            h(Field, { label: "Short name (logo)" },
+              h("input", { value: labDraft.short, onChange: e => setLabDraft({ ...labDraft, short: e.target.value }), className: "field-input mono", placeholder: "PCL" })),
+            h(Field, { label: "Branch" },
+              h("input", { value: labDraft.branch, onChange: e => setLabDraft({ ...labDraft, branch: e.target.value }), className: "field-input" }))),
+          h(Field, { label: "Tagline (top-right ribbon)" },
+            h("input", { value: labDraft.tagline, onChange: e => setLabDraft({ ...labDraft, tagline: e.target.value }), className: "field-input", placeholder: "FULLY COMPUTERISED LAB" })),
+          h(Field, { label: "Address" },
+            h("input", { value: labDraft.address, onChange: e => setLabDraft({ ...labDraft, address: e.target.value }), className: "field-input" })),
+          h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-5" },
+            h(Field, { label: "Phone" },
+              h("input", { value: labDraft.phone, onChange: e => setLabDraft({ ...labDraft, phone: e.target.value }), className: "field-input mono" })),
+            h(Field, { label: "WhatsApp country code" },
+              h("input", { value: labDraft.whatsappCountryCode, onChange: e => setLabDraft({ ...labDraft, whatsappCountryCode: e.target.value.replace(/\D/g,"") }), className: "field-input mono", placeholder: "91" }))),
+          h("div", { className: "grid grid-cols-1 sm:grid-cols-2 gap-5" },
+            h(Field, { label: "Signatory name" },
+              h("input", { value: labDraft.signatoryName, onChange: e => setLabDraft({ ...labDraft, signatoryName: e.target.value }), className: "field-input" })),
+            h(Field, { label: "Qualification" },
+              h("input", { value: labDraft.signatoryQual, onChange: e => setLabDraft({ ...labDraft, signatoryQual: e.target.value }), className: "field-input", placeholder: "MBBS, MD" }))),
+          h(Field, { label: "Equipment line (footer)", hint: "Shown on bottom-right of PDF" },
+            h("input", { value: labDraft.equipment, onChange: e => setLabDraft({ ...labDraft, equipment: e.target.value }), className: "field-input text-sm" })),
+          h(Field, { label: "Jurisdiction (red footer)" },
+            h("input", { value: labDraft.jurisdiction, onChange: e => setLabDraft({ ...labDraft, jurisdiction: e.target.value }), className: "field-input" })),
+          h("div", null,
+            h("div", { className: "smallcaps text-[10px] mb-3", style: { color: "var(--muted)" } }, "Lab logo"),
+            h("div", { className: "flex items-center gap-4" },
+              labDraft.logoDataUrl
+                ? h("img", { src: labDraft.logoDataUrl, alt: "logo", className: "w-16 h-16 object-contain", style: { background: "var(--bg-2)", border: "1px solid var(--hairline)" }})
+                : h("div", { className: "w-16 h-16 flex items-center justify-center text-xs", style: { background: "var(--bg-2)", border: "1px dashed var(--hairline)", color: "var(--muted)" } }, "—"),
+              h("label", { className: "btn-ghost cursor-pointer" }, "Upload",
+                h("input", { type: "file", accept: "image/*", className: "hidden", onChange: e => onLogoFile(e.target.files?.[0]) })),
+              labDraft.logoDataUrl && h("button", { onClick: () => setLabDraft({ ...labDraft, logoDataUrl: "" }),
+                className: "text-xs underline", style: { color: "var(--accent)" } }, "Remove")))
+        ),
+
+        section === "scanning" && h(React.Fragment, null,
+          apiKey.isBuiltIn
+            ? h("div", { className: "p-4", style: { background: "#e8f0e9", borderLeft: "2px solid var(--good)" } },
+                h("div", { className: "smallcaps text-[10px]", style: { color: "var(--good)" } }, "Gemini key"),
+                h("div", { className: "text-sm mt-1" }, "Built-in key active — photo scanning ready."),
+                h("div", { className: "mono text-xs mt-2", style: { color: "var(--muted)" } }, apiKey.key.slice(0, 14) + "…"))
+            : h(React.Fragment, null,
+                h("div", { className: "space-y-2" },
+                  h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Gemini API key"),
+                  h("p", { className: "text-sm" }, "Custom key overrides the built-in one."),
+                  h("a", { href: "https://aistudio.google.com/apikey", target: "_blank", rel: "noopener noreferrer",
+                    className: "inline-flex items-center gap-1 text-xs underline" }, "Get a key ", h(Icon, { d: I.link, className: "w-3 h-3" }))),
+                h("div", { className: "flex items-center" },
+                  h("input", { type: showKey ? "text" : "password", value: keyDraft,
+                    onChange: e => setKeyDraft(e.target.value), placeholder: "AIzaSy…",
+                    className: "field-input mono", autoCapitalize: "off", autoCorrect: "off", spellCheck: false }),
+                  h("button", { onClick: () => setShowKey(!showKey), className: "px-2", style: { color: "var(--muted)" } },
+                    h(Icon, { d: showKey ? I.eyeOff : I.eye }))),
+                h("button", { onClick: () => { apiKey.clear(); setKeyDraft(GEMINI_KEY); },
+                  className: "text-xs underline", style: { color: "var(--accent)" } }, "Reset to built-in key"))
+        ),
+
+        section === "cloud" && h(React.Fragment, null,
+          h("div", { className: "p-4", style: { background: "var(--bg-2)", borderLeft: `2px solid ${store.isCloud ? "var(--good)" : "var(--muted)"}` } },
+            h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Status"),
+            h("div", { className: "text-sm mt-1" },
+              store.isCloud ? `Synced — ${store.reports.length} reports loaded from cloud.` : "Reports save locally only.")),
+          h(Field, { label: "Project URL", hint: "From Project Settings → API" },
+            h("input", { value: supaDraft.url, onChange: e => setSupaDraft({ ...supaDraft, url: e.target.value.trim() }),
+              placeholder: "https://xxxxxxxxxxx.supabase.co", className: "field-input mono",
+              autoCapitalize: "off", autoCorrect: "off", spellCheck: false })),
+          h(Field, { label: "Anon (public) key", hint: "Public by design — security comes from your RLS rules" },
+            h("div", { className: "flex items-center" },
+              h("input", { type: showSupaKey ? "text" : "password", value: supaDraft.anonKey,
+                onChange: e => setSupaDraft({ ...supaDraft, anonKey: e.target.value.trim() }),
+                placeholder: "eyJhbGciOi…", className: "field-input mono",
+                autoCapitalize: "off", autoCorrect: "off", spellCheck: false }),
+              h("button", { onClick: () => setShowSupaKey(!showSupaKey), className: "px-2", style: { color: "var(--muted)" } },
+                h(Icon, { d: showSupaKey ? I.eyeOff : I.eye })))),
+          h("div", { className: "flex gap-2" },
+            h("button", { onClick: testConnection,
+              disabled: !supaDraft.url || !supaDraft.anonKey || testStatus === "testing",
+              className: "btn-ghost" }, testStatus === "testing" ? "Testing…" : "Test connection"),
+            supaCfg.cfg.url && h("button", { onClick: () => { supaCfg.clear(); setSupaDraft({ url: "", anonKey: "" }); },
+              className: "text-xs underline self-center", style: { color: "var(--accent)" } }, "Disconnect")),
+          testStatus === "ok" && h("div", { className: "p-3 text-sm",
+            style: { background: "#e8f0e9", color: "var(--good)", borderLeft: "2px solid var(--good)" } },
+            "✓ Connection successful. Save to activate."),
+          testStatus.startsWith("fail:") && h("div", { className: "p-3 text-sm",
+            style: { background: "var(--accent-soft)", color: "var(--accent)", borderLeft: "2px solid var(--accent)" } },
+            h("div", { className: "smallcaps text-[10px] mb-1" }, "Failed"),
+            h("div", { className: "mono text-xs break-all" }, testStatus.slice(5)))
+        ),
+
+        section === "backup" && h(React.Fragment, null,
+          h("div", { className: "p-4", style: { background: "var(--bg-2)" } },
+            h("div", { className: "smallcaps text-[10px]", style: { color: "var(--muted)" } }, "Storage"),
+            h("div", { className: "display text-2xl mt-1" }, store.reports.length, h("span", { className: "text-base font-normal ml-2" }, "reports")),
+            h("p", { className: "text-xs mt-2", style: { color: "var(--muted)" } },
+              store.isCloud ? "In cloud + cached locally" : "On this device only — backup regularly")),
+          h("button", { onClick: () => exportAllData(store.reports, labDraft),
+            className: "btn-primary flex items-center gap-2" },
+            h(Icon, { d: I.download, className: "w-4 h-4" }), "Export backup (.json)")
+        )
+      ),
+
+      h("div", { className: "px-6 py-4 flex justify-end gap-2 border-t", style: { background: "var(--bg-2)", borderColor: "var(--line)" } },
+        h("button", { onClick: onClose, className: "btn-ghost" }, "Cancel"),
+        h("button", { onClick: () => {
+            apiKey.save(keyDraft.trim());
+            labCfg.save(labDraft);
+            if (supaDraft.url && supaDraft.anonKey) supaCfg.save({ url: supaDraft.url, anonKey: supaDraft.anonKey });
+            onClose();
+          }, className: "btn-primary" }, "Save"))
+    )
+  );
+}
+
+createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
