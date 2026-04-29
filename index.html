@@ -525,14 +525,15 @@ const generatePDF = (report, lab) => {
   doc.text("FLAG",           cFlag,   y, { align: "center" });
   doc.text("NORMAL RANGE",   cRange,  y);
   doc.text("UNIT",           cUnit,   y, { align: "right" });
-  y += HDR_H - 4.5;
+  y += ROW_H + 1;
 
   const fmtNum = (n, d) => d === "integer" ? String(Math.round(n)) : d === "decimal3" ? n.toFixed(3) : d === "decimal2" ? n.toFixed(2) : n.toFixed(1);
 
+  let firstRow = true;
   for (const p of PARAMS) {
-    // row separator
-    doc.setDrawColor(210, 205, 200); doc.setLineWidth(0.2);
-    doc.line(ML, y - ROW_H + 2.5, W - MR, y - ROW_H + 2.5);
+    // row separator (skip the very first — header already borders it)
+    if (!firstRow) { doc.setDrawColor(210, 205, 200); doc.setLineWidth(0.2); doc.line(ML, y - ROW_H + 2.5, W - MR, y - ROW_H + 2.5); }
+    firstRow = false;
 
     if (p.section) {
       y += 2;
@@ -762,6 +763,16 @@ function App() {
     setSaveAttempted(false);
   };
 
+  const fillTestData = () => {
+    setPatient({ name: "Harjinder Singh", age: "42", gender: "M", phone: "9814233567", refBy: "Dr. Gurpreet Kaur" });
+    setValues({
+      HGB: "11.2", TLC: "11.8", NEUT: "74", LYMPH: "18", MONO: "5", EOS: "2", BASO: "0", OTHER: "0",
+      RBC: "3.85", HCT: "34.1", MCV: "88.6", MCH: "29.1", MCHC: "32.8", RDW_CV: "15.9", RDW_SV: "48.2",
+      PLT: "412", MPV: "9.3", PDW: "12.1", PCT: "0.38"
+    });
+    setSaveAttempted(false);
+  };
+
   const handleSave = async () => {
     if (editingId) {
       const updated = await store.updateReport(editingId, {
@@ -891,7 +902,9 @@ function App() {
           h("section", { className: "lg:col-span-5 space-y-6" },
             h("div", { className: "flex items-baseline justify-between" },
               h("h2", { className: "display text-2xl sm:text-3xl font-semibold" }, "Patient"),
-              h("span", { className: "report-num text-lg" }, `№ ${editingId || nextId(store.reports)}`)),
+              h("div", { className: "flex items-center gap-3" },
+                h("button", { onClick: fillTestData, className: "text-xs px-2 py-1 rounded border", style: { color: "var(--muted)", borderColor: "var(--hairline)" }, title: "Fill form with sample data for testing" }, "Fill test data"),
+                h("span", { className: "report-num text-lg" }, `№ ${editingId || nextId(store.reports)}`))),
             h("div", { className: "hairline-strong" }),
             h("div", { className: "space-y-5 pt-2" },
               h(Field, { label: "Full name" },
