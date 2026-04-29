@@ -530,18 +530,21 @@ const generatePDF = (report, lab) => {
   const fmtNum = (n, d) => d === "integer" ? String(Math.round(n)) : d === "decimal3" ? n.toFixed(3) : d === "decimal2" ? n.toFixed(2) : n.toFixed(1);
 
   let firstRow = true;
+  let prevWasSection = false;
   for (const p of PARAMS) {
-    // row separator (skip the very first — header already borders it)
-    if (!firstRow) { doc.setDrawColor(210, 205, 200); doc.setLineWidth(0.2); doc.line(ML, y - ROW_H + 2.5, W - MR, y - ROW_H + 2.5); }
+    // row separator (skip after header row and after section subheaders)
+    if (!firstRow && !prevWasSection) { doc.setDrawColor(210, 205, 200); doc.setLineWidth(0.2); doc.line(ML, y - ROW_H + 2.5, W - MR, y - ROW_H + 2.5); }
     firstRow = false;
+    prevWasSection = false;
 
     if (p.section) {
+      prevWasSection = true;
       y += 2;
       doc.setFillColor(235, 230, 222);
-      doc.rect(ML, y - 5, W - ML - MR, 7.5, "F");
-      doc.setFont("helvetica", "bold"); doc.setFontSize(10); doc.setTextColor(...DARK);
+      doc.rect(ML, y - 5, W - ML - MR, 6.5, "F");
+      doc.setFont("helvetica", "bold"); doc.setFontSize(9.5); doc.setTextColor(...DARK);
       doc.text("DIFFERENTIAL LEUCOCYTE COUNT (DLC)", cInv, y);
-      y += 5;
+      y += ROW_H + 2;
       continue;
     }
 
