@@ -607,36 +607,47 @@ const generatePDF = (report, lab) => {
   return doc;
 };
 
+const _shareOrAnchor = (blob, filename, onFail) => {
+  // Try native share sheet first (works on iOS + Android)
+  if (navigator.share) {
+    const file = new File([blob], filename, { type: "application/pdf" });
+    let ok = false;
+    try { ok = !navigator.canShare || navigator.canShare({ files: [file] }); } catch {}
+    if (ok) { navigator.share({ files: [file] }).catch(onFail); return true; }
+  }
+  return false;
+};
+
 const downloadPDF = (report, lab) => {
   const doc = generatePDF(report, lab);
   const filename = `Hematology_${report.id}_${(report.patient.name || "patient").replace(/\s+/g,"_")}.pdf`;
   const blob = doc.output("blob");
-  // Use Web Share API on mobile (works on Android + iOS)
-  if (navigator.share) {
-    const file = new File([blob], filename, { type: "application/pdf" });
-    try {
-      if (!navigator.canShare || navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: filename }).catch(() => doc.save(filename));
-        return;
-      }
-    } catch {}
-  }
-  doc.save(filename);
+  const anchor = () => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 15000);
+  };
+  if (!_shareOrAnchor(blob, filename, anchor)) anchor();
 };
 const printPDF = (report, lab) => {
   const doc = generatePDF(report, lab);
-  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  if (isMobile) {
-    // Open PDF in new tab — user prints from browser menu
-    const blob = doc.output("blob");
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!isMobile) {
+    doc.autoPrint();
+    const url = doc.output("bloburl");
+    if (!window.open(url)) alert("Allow pop-ups to print.");
+    return;
+  }
+  const blob = doc.output("blob");
+  // Share sheet on mobile has a Print option (AirPrint / system print)
+  if (!_shareOrAnchor(blob, `${report.id}.pdf`, () => {})) {
+    // Last resort: open PDF blob in new tab
     const url = URL.createObjectURL(blob);
     setTimeout(() => URL.revokeObjectURL(url), 60000);
     if (!window.open(url, "_blank")) window.location.href = url;
-  } else {
-    doc.autoPrint();
-    const url = doc.output("bloburl");
-    const w = window.open(url);
-    if (!w) alert("Allow pop-ups to print.");
   }
 };
 
