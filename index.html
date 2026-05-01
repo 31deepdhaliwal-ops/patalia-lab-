@@ -608,13 +608,36 @@ const generatePDF = (report, lab) => {
 };
 
 const downloadPDF = (report, lab) => {
-  generatePDF(report, lab).save(`Hematology_${report.id}_${(report.patient.name || "patient").replace(/\s+/g,"_")}.pdf`);
+  const doc = generatePDF(report, lab);
+  const filename = `Hematology_${report.id}_${(report.patient.name || "patient").replace(/\s+/g,"_")}.pdf`;
+  const blob = doc.output("blob");
+  // Use Web Share API on mobile (works on Android + iOS)
+  if (navigator.share) {
+    const file = new File([blob], filename, { type: "application/pdf" });
+    try {
+      if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+        navigator.share({ files: [file], title: filename }).catch(() => doc.save(filename));
+        return;
+      }
+    } catch {}
+  }
+  doc.save(filename);
 };
 const printPDF = (report, lab) => {
-  const doc = generatePDF(report, lab); doc.autoPrint();
-  const url = doc.output("bloburl");
-  const w = window.open(url);
-  if (!w) alert("Allow pop-ups to print.");
+  const doc = generatePDF(report, lab);
+  const isMobile = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (isMobile) {
+    // Open PDF in new tab — user prints from browser menu
+    const blob = doc.output("blob");
+    const url = URL.createObjectURL(blob);
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    if (!window.open(url, "_blank")) window.location.href = url;
+  } else {
+    doc.autoPrint();
+    const url = doc.output("bloburl");
+    const w = window.open(url);
+    if (!w) alert("Allow pop-ups to print.");
+  }
 };
 
 const whatsappLink = (report, lab) => {
